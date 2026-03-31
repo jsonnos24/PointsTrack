@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PointsTrack</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, getDocs, deleteDoc, collection, query, orderBy, addDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+// PASTE YOUR FIREBASE CONFIG HERE
+const firebaseConfig = {
+  apiKey: "AIzaSyAEQwUS-rq1NwL36TUBrEzZQJPRwQoURpM",
+  authDomain: "pointstrack-773da.firebaseapp.com",
+  projectId: "pointstrack-773da",
+  storageBucket: "pointstrack-773da.firebasestorage.app",
+  messagingSenderId: "476361558281",
+  appId: "1:476361558281:web:782a06fadca00b7d06abd8",
+  measurementId: "G-YZ96W10YF3"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
+window._fb = { auth, db, provider, signInWithPopup, signOut, onAuthStateChanged, doc, setDoc, getDoc, getDocs, deleteDoc, collection, query, orderBy, addDoc };
+window.dispatchEvent(new Event('fb-ready'));
+</script>
+<style>
+:root{--bg:#F7F4EE;--sf:#FFF;--s2:#F0EDE6;--bd:#E2DDD5;--tx:#1A1714;--mu:#7A746B;--ac:#C8553D;--al:#F5E6E2;--gn:#2D6A4F;--gl:#D8F3DC;--go:#E9A923;--gol:#FEF3D0;--r:14px;--rs:8px;--sh:0 2px 16px rgba(26,23,20,.08);--shl:0 8px 40px rgba(26,23,20,.14);}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;font-size:15px;}
+#loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;}
+.lc{background:var(--sf);border-radius:20px;padding:44px 36px;text-align:center;max-width:400px;width:100%;box-shadow:var(--shl);border:1px solid var(--bd);}
+.llogo{font-family:'Fraunces',serif;font-size:34px;font-weight:900;margin-bottom:8px;}
+.llogo span{color:var(--go);}
+.ltag{color:var(--mu);font-size:14px;margin-bottom:28px;line-height:1.5;}
+.gbtn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:13px 20px;background:var(--tx);color:#fff;border:none;border-radius:var(--rs);font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer;transition:opacity .2s;}
+.gbtn:hover{opacity:.85;}
+.lnote{font-size:12px;color:var(--mu);margin-top:14px;}
+header{background:var(--tx);color:#fff;padding:0 18px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.2);height:52px;gap:10px;}
+.logo{font-family:'Fraunces',serif;font-size:19px;font-weight:900;flex-shrink:0;}
+.logo span{color:var(--go);}
+.tabs{display:flex;gap:2px;background:rgba(255,255,255,.08);border-radius:8px;padding:3px;overflow-x:auto;}
+.tabs::-webkit-scrollbar{display:none;}
+.tb{padding:5px 11px;border:none;background:transparent;color:rgba(255,255,255,.5);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;border-radius:6px;transition:all .2s;white-space:nowrap;}
+.tb.active{background:#fff;color:var(--tx);}
+.hright{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.uav{width:26px;height:26px;border-radius:50%;background:var(--go);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#000;flex-shrink:0;}
+.sobt{background:none;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.6);font-family:'DM Sans',sans-serif;font-size:11px;padding:4px 8px;border-radius:var(--rs);cursor:pointer;}
+.sobt:hover{color:#fff;border-color:rgba(255,255,255,.5);}
+.view{display:none;}.view.active{display:block;}
+.con{max-width:940px;margin:0 auto;padding:18px 16px 60px;}
+.card{background:var(--sf);border-radius:var(--r);border:1px solid var(--bd);box-shadow:var(--sh);}
+.cp{padding:18px;}
+.stitle{font-family:'Fraunces',serif;font-size:17px;font-weight:700;margin-bottom:12px;}
+.spinner{width:18px;height:18px;border:2px solid var(--bd);border-top-color:var(--ac);border-radius:50%;animation:spin .7s linear infinite;display:inline-block;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading{display:flex;align-items:center;justify-content:center;min-height:140px;gap:10px;color:var(--mu);font-size:14px;}
+.no-data{padding:28px;text-align:center;color:var(--mu);font-size:14px;font-style:italic;}
+label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--mu);}
+input[type=text],input[type=number],input[type=date],select,textarea{width:100%;padding:9px 11px;border:1.5px solid var(--bd);border-radius:var(--rs);font-family:'DM Sans',sans-serif;font-size:14px;color:var(--tx);background:var(--bg);outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none;appearance:none;}
+input:focus,select:focus,textarea:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--al);background:#fff;}
+textarea{resize:vertical;min-height:60px;}
+.fg{display:flex;flex-direction:column;gap:4px;position:relative;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.full{grid-column:1/-1;}
+.btn{padding:9px 16px;border:none;border-radius:var(--rs);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;}
+.bp{background:var(--ac);color:#fff;width:100%;padding:10px;}
+.bp:hover{background:#b3432b;}
+.bp:disabled{background:var(--bd);color:var(--mu);cursor:not-allowed;}
+.bo{background:none;border:1.5px solid var(--bd);color:var(--mu);}
+.bo:hover{border-color:var(--ac);color:var(--ac);}
+.bsm{padding:5px 11px;font-size:12px;}
+.bdng{background:none;border:1.5px solid #fca5a5;color:var(--ac);font-size:12px;padding:4px 9px;}
+.bdng:hover{background:var(--al);}
+.sa{position:relative;}
+.sa::after{content:'v';position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--mu);font-size:11px;}
+.qw{display:flex;border:1.5px solid var(--bd);border-radius:var(--rs);overflow:hidden;background:var(--bg);transition:border-color .2s;}
+.qw:focus-within{border-color:var(--ac);box-shadow:0 0 0 3px var(--al);background:#fff;}
+.qw button{background:none;border:none;width:30px;height:36px;font-size:16px;cursor:pointer;color:var(--mu);flex-shrink:0;}
+.qw button:hover{background:var(--s2);color:var(--ac);}
+.qw input{border:none;border-radius:0;text-align:center;padding:8px 4px;width:48px;background:transparent;}
+.qw input:focus{box-shadow:none;border:none;background:transparent;}
+.sw{position:relative;}
+.si{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--mu);pointer-events:none;}
+.sw input{padding-left:32px;}
+.dd{position:absolute;top:calc(100% + 3px);left:0;right:0;background:#fff;border:1.5px solid var(--bd);border-radius:var(--rs);box-shadow:var(--shl);z-index:300;max-height:240px;overflow-y:auto;display:none;}
+.dd.open{display:block;}
+.di{padding:8px 12px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px solid var(--bd);transition:background .15s;}
+.di:last-child{border-bottom:none;}
+.di:hover{background:var(--al);}
+.fn{font-size:13px;font-weight:500;flex:1;}
+.fc{font-size:11px;color:var(--mu);}
+.fp{font-size:11px;font-weight:700;padding:2px 6px;border-radius:99px;white-space:nowrap;}
+.fpg{background:var(--gol);color:#8a6200;}
+.fpz{background:var(--gl);color:var(--gn);}
+.no-res{padding:12px;text-align:center;color:var(--mu);font-size:13px;}
+.dnav{display:flex;align-items:center;justify-content:space-between;background:var(--sf);border-radius:var(--r);padding:11px 15px;margin-bottom:14px;border:1px solid var(--bd);box-shadow:var(--sh);}
+.nb{background:none;border:1.5px solid var(--bd);border-radius:var(--rs);width:30px;height:30px;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--mu);transition:all .2s;}
+.nb:hover:not(:disabled){border-color:var(--ac);color:var(--ac);}
+.nb:disabled{opacity:.3;cursor:not-allowed;}
+.dnc{text-align:center;}
+.dnd{font-family:'Fraunces',serif;font-size:16px;font-weight:700;}
+.dns{font-size:12px;color:var(--mu);margin-top:1px;}
+.tbdg{display:inline-block;background:var(--gol);color:#7a5200;font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:5px;vertical-align:middle;}
+.scard{background:var(--tx);border-radius:var(--r);padding:20px 22px;margin-bottom:14px;color:#fff;position:relative;overflow:hidden;}
+.scard::before{content:'';position:absolute;top:-40px;right:-40px;width:140px;height:140px;background:rgba(255,255,255,.03);border-radius:50%;}
+.stop{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;}
+.sl{font-size:11px;text-transform:uppercase;letter-spacing:1.4px;color:rgba(255,255,255,.4);font-weight:500;}
+.pb{font-family:'Fraunces',serif;font-size:46px;font-weight:900;line-height:1;color:var(--go);}
+.ps{font-size:15px;color:rgba(255,255,255,.3);}
+.bn{font-family:'Fraunces',serif;font-size:24px;font-weight:700;color:rgba(255,255,255,.8);}
+.pw{background:rgba(255,255,255,.1);border-radius:99px;height:7px;overflow:hidden;}
+.pf{height:100%;background:linear-gradient(90deg,var(--go),#f5c842);border-radius:99px;transition:width .5s cubic-bezier(.25,1,.5,1);max-width:100%;}
+.pf.over{background:linear-gradient(90deg,var(--ac),#e8705a);}
+.chips{display:flex;gap:7px;margin-top:12px;flex-wrap:wrap;}
+.chip{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.1);border-radius:99px;padding:4px 10px;font-size:12px;color:rgba(255,255,255,.6);display:flex;align-items:center;gap:4px;}
+.chip strong{color:#fff;font-weight:600;}
+.addsec{background:var(--sf);border-radius:var(--r);padding:17px;margin-bottom:14px;box-shadow:var(--sh);border:1px solid var(--bd);}
+.inforow{font-size:12px;color:var(--mu);background:var(--s2);padding:6px 10px;border-radius:var(--rs);margin-bottom:10px;}
+.pprev{background:var(--gol);border:1.5px solid #e9c76a;border-radius:var(--rs);padding:8px 12px;display:none;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.pprev.vis{display:flex;}
+.pvl{font-size:13px;color:#6b4e00;font-weight:500;}
+.pvv{font-family:'Fraunces',serif;font-size:19px;font-weight:900;color:var(--go);}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:11px;}
+.mcard{background:var(--sf);border-radius:var(--r);border:1px solid var(--bd);overflow:hidden;box-shadow:var(--sh);}
+.mhdr{padding:10px 13px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--bd);}
+.mnm{font-family:'Fraunces',serif;font-size:14px;font-weight:700;}
+.mbdg{font-size:11px;font-weight:700;background:var(--s2);padding:2px 8px;border-radius:99px;color:var(--mu);}
+.mbdg.hf{background:var(--gol);color:#7a5200;}
+.mitems{padding:4px 0;min-height:38px;}
+.mi{padding:6px 13px;display:flex;align-items:center;justify-content:space-between;gap:8px;transition:background .15s;animation:fs .2s ease;}
+@keyframes fs{from{opacity:0;transform:translateY(-4px);}to{opacity:1;transform:translateY(0);}}
+.mi:hover{background:var(--s2);}
+.min{font-size:13px;font-weight:500;flex:1;}
+.miq{font-size:11px;color:var(--mu);}
+.mip{font-weight:700;font-size:12px;color:var(--go);min-width:26px;text-align:right;}
+.mip.z{color:var(--gn);}
+.mid{background:none;border:none;cursor:pointer;color:#ccc;font-size:13px;padding:2px;line-height:1;}
+.mid:hover{color:var(--ac);}
+.mempty{padding:14px;font-size:13px;color:var(--mu);text-align:center;font-style:italic;}
+.pastnote{background:var(--s2);border-radius:var(--rs);padding:9px 13px;font-size:13px;color:var(--mu);margin-bottom:13px;text-align:center;}
+.ptabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
+.pt{padding:6px 15px;border:1.5px solid var(--bd);border-radius:99px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;background:var(--sf);color:var(--mu);transition:all .2s;}
+.pt.active{background:var(--tx);color:#fff;border-color:var(--tx);}
+.pt:hover:not(.active){border-color:var(--ac);color:var(--ac);}
+.pnav{display:flex;align-items:center;gap:10px;margin-bottom:13px;}
+.pnb{background:none;border:1.5px solid var(--bd);border-radius:var(--rs);padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer;color:var(--mu);font-family:'DM Sans',sans-serif;transition:all .2s;}
+.pnb:hover:not(:disabled){border-color:var(--ac);color:var(--ac);}
+.pnb:disabled{opacity:.3;cursor:not-allowed;}
+.pnl{font-family:'Fraunces',serif;font-size:16px;font-weight:700;flex:1;text-align:center;}
+.srow{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:13px;}
+.sc{background:var(--sf);border-radius:var(--r);padding:13px;border:1px solid var(--bd);box-shadow:var(--sh);}
+.scl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--mu);margin-bottom:3px;}
+.scv{font-family:'Fraunces',serif;font-size:24px;font-weight:900;line-height:1;}
+.scv.g{color:var(--gn);}.scv.gold{color:var(--go);}.scv.r{color:var(--ac);}
+.scs{font-size:11px;color:var(--mu);margin-top:2px;}
+.cc{background:var(--sf);border-radius:var(--r);padding:17px;border:1px solid var(--bd);box-shadow:var(--sh);margin-bottom:13px;}
+.ch{font-family:'Fraunces',serif;font-size:15px;font-weight:700;margin-bottom:13px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;}
+.bch{display:flex;align-items:flex-end;gap:5px;height:130px;}
+.bc{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;height:100%;min-width:0;}
+.bw{flex:1;display:flex;align-items:flex-end;width:100%;}
+.b{width:100%;border-radius:4px 4px 0 0;min-height:3px;transition:height .5s cubic-bezier(.25,1,.5,1);}
+.b.und{background:linear-gradient(180deg,#f5c842,var(--go));}
+.b.ovr{background:linear-gradient(180deg,#e8705a,var(--ac));}
+.b.emp{background:var(--bd);opacity:.3;}
+.b.td{outline:2px solid var(--tx);outline-offset:2px;}
+.bl{font-size:9px;color:var(--mu);font-weight:600;text-align:center;overflow:hidden;max-width:100%;}
+.bpts{font-size:9px;font-weight:700;color:var(--tx);}
+.sch{display:flex;align-items:flex-end;gap:5px;height:130px;}
+.lgd{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--mu);margin-top:9px;}
+.li{display:flex;align-items:center;gap:4px;}
+.ld{width:8px;height:8px;border-radius:2px;flex-shrink:0;}
+.hrow{display:flex;align-items:center;padding:10px 15px;border-bottom:1px solid var(--bd);gap:10px;cursor:pointer;transition:background .15s;}
+.hrow:last-child{border-bottom:none;}
+.hrow:hover{background:var(--s2);}
+.hrow.tr{background:var(--gol);}
+.hd{font-weight:600;font-size:13px;min-width:95px;}
+.hdt{font-size:11px;color:var(--mu);}
+.hbw{flex:1;background:var(--s2);border-radius:99px;height:6px;overflow:hidden;}
+.hbf{height:100%;border-radius:99px;}
+.hpts{font-family:'Fraunces',serif;font-size:15px;font-weight:700;min-width:38px;text-align:right;}
+.hpts.ov{color:var(--ac);}.hpts.un{color:var(--gn);}
+.hst{font-size:11px;font-weight:600;min-width:50px;text-align:right;}
+.hmap{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-top:3px;}
+.hmdl{font-size:9px;color:var(--mu);text-align:center;padding:2px 0;}
+.hmc{aspect-ratio:1;border-radius:3px;cursor:pointer;transition:transform .1s;position:relative;}
+.hmc:hover{transform:scale(1.2);}
+.hmtp{display:none;position:absolute;bottom:calc(100% + 3px);left:50%;transform:translateX(-50%);background:var(--tx);color:#fff;font-size:10px;padding:3px 6px;border-radius:4px;white-space:nowrap;z-index:10;pointer-events:none;}
+.hmc:hover .hmtp{display:block;}
+.who{background:var(--tx);border-radius:var(--r);padding:20px 22px;margin-bottom:13px;color:#fff;position:relative;overflow:hidden;}
+.who::before{content:'';position:absolute;top:-40px;right:-40px;width:130px;height:130px;background:rgba(255,255,255,.03);border-radius:50%;}
+.whg{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+.whl{font-size:11px;text-transform:uppercase;letter-spacing:1.2px;color:rgba(255,255,255,.4);font-weight:500;margin-bottom:3px;}
+.whv{font-family:'Fraunces',serif;font-size:32px;font-weight:900;line-height:1;color:var(--go);}
+.whu{font-size:13px;color:rgba(255,255,255,.5);margin-left:3px;}
+.whs{font-size:12px;color:rgba(255,255,255,.5);margin-top:2px;}
+.gbw{margin-top:14px;}
+.gbl{display:flex;justify-content:space-between;font-size:12px;color:rgba(255,255,255,.5);margin-bottom:5px;}
+.gbt{background:rgba(255,255,255,.1);border-radius:99px;height:9px;overflow:hidden;}
+.gbf{height:100%;background:linear-gradient(90deg,var(--gn),#34d399);border-radius:99px;transition:width .6s cubic-bezier(.25,1,.5,1);}
+.bmip{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.08);border-radius:99px;padding:4px 12px;font-size:13px;margin-top:10px;}
+.bmid{width:7px;height:7px;border-radius:50%;}
+.lch{position:relative;height:170px;margin-top:6px;}
+.lch svg{width:100%;height:100%;}
+.wlr{display:flex;align-items:center;padding:9px 15px;border-bottom:1px solid var(--bd);gap:10px;}
+.wlr:last-child{border-bottom:none;}
+.wld{font-size:13px;font-weight:600;flex:1;}
+.wlv{font-family:'Fraunces',serif;font-size:17px;font-weight:700;color:var(--go);}
+.wldf{font-size:12px;font-weight:600;min-width:44px;text-align:right;}
+.wldf.up{color:var(--ac);}.wldf.dn{color:var(--gn);}
+.wldl{background:none;border:none;cursor:pointer;color:#ccc;font-size:13px;padding:2px;}
+.wldl:hover{color:var(--ac);}
+.rgrid{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:14px;}
+.rcard{background:var(--sf);border-radius:var(--r);border:1px solid var(--bd);box-shadow:var(--sh);overflow:hidden;}
+.rchdr{padding:13px 15px;border-bottom:1px solid var(--bd);display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.rcn{font-family:'Fraunces',serif;font-size:15px;font-weight:700;}
+.rcp{font-size:13px;font-weight:700;color:var(--go);}
+.rcs{font-size:12px;color:var(--mu);margin-top:2px;}
+.rcno{font-size:12px;color:var(--mu);padding:9px 15px;border-bottom:1px solid var(--bd);font-style:italic;}
+.rcis{padding:6px 0;}
+.rci{padding:4px 15px;font-size:13px;display:flex;justify-content:space-between;gap:8px;}
+.rci span{color:var(--mu);font-size:12px;}
+.rcac{padding:9px 13px;display:flex;gap:7px;border-top:1px solid var(--bd);}
+.rcby{font-size:11px;color:var(--mu);padding:0 15px 9px;}
+.ftabs{display:flex;gap:6px;margin-bottom:14px;}
+.ftb{padding:6px 15px;border:1.5px solid var(--bd);border-radius:99px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;background:var(--sf);color:var(--mu);transition:all .2s;}
+.ftb.active{background:var(--tx);color:#fff;border-color:var(--tx);}
+.ftb:hover:not(.active){border-color:var(--ac);color:var(--ac);}
+.fli{display:flex;align-items:center;padding:10px 15px;border-bottom:1px solid var(--bd);gap:10px;}
+.fli:last-child{border-bottom:none;}
+.flin{font-size:14px;font-weight:500;flex:1;}
+.flicat{font-size:11px;color:var(--mu);}
+.flip{font-family:'Fraunces',serif;font-size:17px;font-weight:700;color:var(--go);min-width:32px;text-align:right;}
+.flim{font-size:11px;color:var(--mu);text-align:right;}
+.cres{background:var(--gol);border:1.5px solid #e9c76a;border-radius:var(--rs);padding:11px 15px;margin-top:11px;display:none;}
+.cres.vis{display:block;}
+.crp{font-family:'Fraunces',serif;font-size:32px;font-weight:900;color:var(--go);line-height:1;}
+.crl{font-size:13px;color:#6b4e00;margin-top:3px;}
+.modal-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center;padding:18px;}
+.modal-ov.open{display:flex;}
+.modal{background:var(--sf);border-radius:var(--r);padding:22px;max-width:500px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:var(--shl);}
+.mtitle{font-family:'Fraunces',serif;font-size:19px;font-weight:700;margin-bottom:15px;}
+.mact{display:flex;gap:10px;margin-top:14px;}
+.ilist{display:flex;flex-direction:column;gap:5px;margin-bottom:9px;}
+.ir{display:flex;align-items:center;gap:8px;background:var(--s2);padding:7px 11px;border-radius:var(--rs);}
+.irn{flex:1;font-size:13px;font-weight:500;}
+.irq{font-size:12px;color:var(--mu);}
+.irp{font-size:12px;font-weight:700;color:var(--go);}
+.ird{background:none;border:none;cursor:pointer;color:#ccc;font-size:13px;padding:2px;}
+.ird:hover{color:var(--ac);}
+.itot{background:var(--gol);border-radius:var(--rs);padding:7px 11px;font-size:14px;font-weight:600;color:#7a5200;text-align:center;margin-bottom:9px;}
+@media(max-width:640px){.mgrid,.rgrid,.srow{grid-template-columns:1fr 1fr;}.g2{grid-template-columns:1fr;}.whg{grid-template-columns:1fr 1fr;}}
+</style>
+</head>
+<body>
+<div id="loginScreen">
+  <div class="lc">
+    <div class="llogo">Points<span>Track</span></div>
+    <div class="ltag">Track your WW-style points daily.<br>Weight, recipes, trends — all in one place.</div>
+    <button class="gbtn" id="signInBtn">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20H24v8h11.3C33.7 33.6 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.8 2.9l5.7-5.7C34.1 6.5 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c11 0 19.6-8 19.6-20 0-1.3-.1-2.7-.4-4z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.1 18.9 12 24 12c3 0 5.7 1.1 7.8 2.9l5.7-5.7C34.1 6.5 29.3 4 24 4 16.3 4 9.6 8.4 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-1.9 13.5-5l-6.2-5.2C29.5 35.5 26.9 36 24 36c-5.2 0-9.6-3.4-11.2-8.1l-6.5 5C9.8 39.7 16.4 44 24 44z"/><path fill="#1976D2" d="M43.6 20H24v8h11.3c-.8 2.3-2.3 4.3-4.3 5.7l6.2 5.2C40.9 35.5 44 30.2 44 24c0-1.3-.1-2.7-.4-4z"/></svg>
+      Continue with Google
+    </button>
+    <div class="lnote">Your data is private. Only you can see your log.</div>
+  </div>
+</div>
+<div id="mainApp" style="display:none">
+  <header>
+    <div class="logo">Points<span>Track</span></div>
+    <div class="tabs">
+      <button class="tb active" onclick="sv('today')">Today</button>
+      <button class="tb" onclick="sv('trends')">Trends</button>
+      <button class="tb" onclick="sv('weight')">Weight</button>
+      <button class="tb" onclick="sv('recipes')">Recipes</button>
+      <button class="tb" onclick="sv('foods')">Foods</button>
+    </div>
+    <div class="hright">
+      <div class="uav" id="uav">?</div>
+      <button class="sobt" id="soBtn">Sign out</button>
+    </div>
+  </header>
+  <div class="view active" id="vtoday"><div class="con">
+    <div class="dnav"><button class="nb" onclick="navDay(-1)">&#9664;</button><div class="dnc"><div class="dnd" id="navDate"></div><div class="dns" id="navSub"></div></div><button class="nb" id="nxtBtn" onclick="navDay(1)">&#9654;</button></div>
+    <div class="scard"><div class="stop"><div><div class="sl">Points Used</div><div style="display:flex;align-items:baseline;gap:5px;margin-top:3px"><span class="pb" id="usedPts">0</span><span class="ps">/ <span id="bdgD">23</span> pts</span></div></div><div style="text-align:right"><div class="sl">Remaining</div><div class="bn" id="remPts">23</div></div></div><div class="pw"><div class="pf" id="pgBar" style="width:0%"></div></div><div class="chips"><div class="chip">Breakfast <strong id="chip-breakfast">0</strong> pts</div><div class="chip">Lunch <strong id="chip-lunch">0</strong> pts</div><div class="chip">Dinner <strong id="chip-dinner">0</strong> pts</div><div class="chip">Snack <strong id="chip-snack">0</strong> pts</div></div></div>
+    <div id="pastNote" class="pastnote" style="display:none">Viewing past day - read only. <a href="#" onclick="jumpToday()" style="color:var(--ac);font-weight:600">Go to today</a></div>
+    <div class="addsec" id="addSec"><div class="stitle">Add Food</div><div class="inforow">Points = (Cal/33) + (SatFat/9) + (Sugar/10) - (Protein/10), minimum 0</div><div class="g2" style="margin-bottom:10px"><div class="fg full"><label>Search Food or Recipe</label><div class="sw"><span class="si">&#128269;</span><input type="text" id="foodSrch" placeholder="banana, chicken, My Smoothie..." autocomplete="off"><div class="dd" id="foodDD"></div></div></div><div class="fg"><label>Meal</label><div class="sa"><select id="mealSel"><option value="breakfast">Breakfast</option><option value="lunch">Lunch</option><option value="dinner">Dinner</option><option value="snack">Snack</option></select></div></div><div class="fg"><label>Servings</label><div class="qw"><button type="button" id="qm">-</button><input type="number" id="qtyIn" value="1" min="0.25" max="20" step="0.25"><button type="button" id="qp">+</button></div></div></div><div class="pprev" id="ptsPrev"><span class="pvl">Points for this entry</span><span class="pvv" id="prevVal">0</span></div><button class="btn bp" id="addBtn" disabled>+ Add to Meal</button></div>
+    <div class="mgrid"><div class="mcard"><div class="mhdr"><div class="mnm">Breakfast</div><div class="mbdg" id="badge-breakfast">0 pts</div></div><div class="mitems" id="items-breakfast"><div class="mempty">No food added yet</div></div></div><div class="mcard"><div class="mhdr"><div class="mnm">Lunch</div><div class="mbdg" id="badge-lunch">0 pts</div></div><div class="mitems" id="items-lunch"><div class="mempty">No food added yet</div></div></div><div class="mcard"><div class="mhdr"><div class="mnm">Dinner</div><div class="mbdg" id="badge-dinner">0 pts</div></div><div class="mitems" id="items-dinner"><div class="mempty">No food added yet</div></div></div><div class="mcard"><div class="mhdr"><div class="mnm">Snack</div><div class="mbdg" id="badge-snack">0 pts</div></div><div class="mitems" id="items-snack"><div class="mempty">No food added yet</div></div></div></div>
+    <button class="btn bo" style="margin-top:14px;display:block;margin-left:auto" onclick="clearDay()">Clear This Day</button>
+  </div></div>
+  <div class="view" id="vtrends"><div class="con">
+    <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:900;margin-bottom:3px">Trends</div>
+    <div style="font-size:13px;color:var(--mu);margin-bottom:16px">Your points history</div>
+    <div class="ptabs"><button class="pt active" onclick="setPd('week',event)">Week</button><button class="pt" onclick="setPd('month',event)">Month</button><button class="pt" onclick="setPd('year',event)">Year</button></div>
+    <div class="pnav"><button class="pnb" id="prevPB" onclick="navP(-1)">Prev</button><div class="pnl" id="pLbl"></div><button class="pnb" id="nextPB" onclick="navP(1)">Next</button></div>
+    <div id="tLoad" class="loading" style="display:none"><div class="spinner"></div> Loading...</div>
+    <div id="tCont"><div class="srow"><div class="sc"><div class="scl">Avg / Day</div><div class="scv gold" id="stAv">-</div><div class="scs">tracked days</div></div><div class="sc"><div class="scl">Days Under Budget</div><div class="scv g" id="stUn">-</div><div class="scs">of <span id="stTr">0</span> days</div></div><div class="sc"><div class="scl">Best Day</div><div class="scv g" id="stBe">-</div><div class="scs" id="stBD">-</div></div><div class="sc"><div class="scl">Period Total</div><div class="scv gold" id="stTo">-</div><div class="scs">of <span id="stBu">-</span></div></div></div>
+    <div class="cc"><div class="ch">Points Per Day</div><div class="bch" id="mChart"></div></div>
+    <div class="cc"><div class="ch">Meal Breakdown</div><div class="sch" id="sChart"></div><div class="lgd"><div class="li"><div class="ld" style="background:#f59e0b"></div>Breakfast</div><div class="li"><div class="ld" style="background:#10b981"></div>Lunch</div><div class="li"><div class="ld" style="background:#6366f1"></div>Dinner</div><div class="li"><div class="ld" style="background:#f43f5e"></div>Snack</div></div></div>
+    <div class="cc" id="hmCard" style="display:none"><div class="ch">Monthly Heatmap</div><div id="hmWrap"></div></div>
+    <div class="cc"><div class="ch">History <span style="font-size:12px;font-weight:400;color:var(--mu)">(click to view)</span></div><div id="histList"></div></div></div>
+  </div></div>
+  <div class="view" id="vweight"><div class="con">
+    <div class="who"><div class="whg"><div><div class="whl">Current Weight</div><div><span class="whv" id="wCur">-</span><span class="whu">lbs</span></div><div class="whs" id="wDf">-</div></div><div><div class="whl">Goal Weight</div><div><span class="whv" id="wGl" style="color:#fff">-</span><span class="whu">lbs</span></div><div class="whs" id="wTg">-</div></div><div><div class="whl">BMI</div><div><span class="whv" id="wBM" style="color:#fff">-</span></div><div class="whs" id="wBC">-</div></div></div><div class="gbw" id="gbWrap" style="display:none"><div class="gbl"><span id="gbSt">-</span><span id="gbGo">Goal -</span></div><div class="gbt"><div class="gbf" id="gbFl" style="width:0%"></div></div></div><div class="bmip" id="bmiPl" style="display:none"><div class="bmid" id="bmiDt"></div><span id="bmiLb">-</span></div></div>
+    <div class="g2" style="margin-bottom:13px"><div class="card cp"><div class="stitle" style="font-size:16px">Log Weight</div><div class="fg" style="margin-bottom:9px"><label>Date</label><input type="date" id="wDate"></div><div class="fg" style="margin-bottom:9px"><label>Weight (lbs)</label><input type="number" id="wVal" placeholder="165.5" step="0.1" min="50" max="600"></div><button class="btn bp" onclick="logWt()">Save Weight</button></div><div class="card cp"><div class="stitle" style="font-size:16px">Settings</div><div class="fg" style="margin-bottom:9px"><label>Goal Weight (lbs)</label><input type="number" id="wGlIn" placeholder="150" step="0.1"></div><div class="fg" style="margin-bottom:9px"><label>Height (inches, for BMI)</label><input type="number" id="wHtIn" placeholder="67" step="0.5"></div><button class="btn bp" onclick="saveWS()">Save Settings</button></div></div>
+    <div class="cc"><div class="ch">Weight Over Time</div><div class="lch" id="wChart"><div class="no-data">Log some weights to see your chart!</div></div></div>
+    <div class="cc"><div class="ch">Weight Log</div><div id="wLog"><div class="no-data">No entries yet</div></div></div>
+  </div></div>
+  <div class="view" id="vrecipes"><div class="con">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px"><div><div style="font-family:'Fraunces',serif;font-size:22px;font-weight:900">Recipes</div><div style="font-size:13px;color:var(--mu)">Save meals you make often - add with one click</div></div><button class="btn bp" style="width:auto;padding:9px 16px" onclick="openRM()">+ New Recipe</button></div>
+    <div id="rGrid" class="rgrid"><div class="no-data" style="grid-column:1/-1">No recipes yet. Create your first one!</div></div>
+  </div></div>
+  <div class="view" id="vfoods"><div class="con">
+    <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:900;margin-bottom:3px">Foods</div>
+    <div style="font-size:13px;color:var(--mu);margin-bottom:14px">Browse, calculate points, or add a custom food</div>
+    <div class="ftabs"><button class="ftb active" onclick="setFT('browse',event)">Browse</button><button class="ftb" onclick="setFT('calc',event)">Calculator</button><button class="ftb" onclick="setFT('custom',event)">+ Custom Food</button></div>
+    <div id="ftBrowse"><div class="card" style="margin-bottom:11px;padding:11px 14px"><div class="sw"><span class="si">&#128269;</span><input type="text" id="bSrch" placeholder="Search all foods..." oninput="rBrowse()"></div></div><div class="card" id="browseList"></div></div>
+    <div id="ftCalc" style="display:none"><div class="card cp"><div class="stitle" style="font-size:16px">Points Calculator</div><div style="font-size:13px;color:var(--mu);margin-bottom:13px">Enter any food label nutrition to calculate WW PersonalPoints</div><div class="g2" style="margin-bottom:10px"><div class="fg"><label>Calories</label><input type="number" id="cC" placeholder="250"></div><div class="fg"><label>Saturated Fat (g)</label><input type="number" id="sFC" placeholder="3.5"></div><div class="fg"><label>Sugar (g)</label><input type="number" id="suC" placeholder="12"></div><div class="fg"><label>Protein (g)</label><input type="number" id="prC" placeholder="8"></div></div><button class="btn bp" onclick="runCalc()">Calculate Points</button><div class="cres" id="cRes"><div class="crp" id="crP">0</div><div class="crl">PersonalPoints per serving</div><button class="btn bo bsm" style="margin-top:9px" onclick="calcToCustom()">Save as Custom Food</button></div></div></div>
+    <div id="ftCustom" style="display:none"><div class="card cp" style="margin-bottom:13px"><div class="stitle" style="font-size:16px">Add Custom Food</div><div style="font-size:13px;color:var(--mu);margin-bottom:13px">Shared with all users of this app</div><div class="g2" style="margin-bottom:10px"><div class="fg full"><label>Food Name</label><input type="text" id="cfN" placeholder="e.g. My Protein Shake"></div><div class="fg full"><label>Category</label><div class="sa"><select id="cfC"><option>Protein</option><option>Dairy</option><option>Grain</option><option>Fruit</option><option>Vegetable</option><option>Snack</option><option>Beverage</option><option>Fast Food</option><option>Custom</option></select></div></div><div class="fg"><label>Calories</label><input type="number" id="cfCal" placeholder="200"></div><div class="fg"><label>Saturated Fat (g)</label><input type="number" id="cfSat" placeholder="2"></div><div class="fg"><label>Sugar (g)</label><input type="number" id="cfSug" placeholder="10"></div><div class="fg"><label>Protein (g)</label><input type="number" id="cfPro" placeholder="15"></div><div class="fg full"><label>Serving Size (optional)</label><input type="text" id="cfSrv" placeholder="1 cup, 1 bar, 250ml..."></div></div><button class="btn bp" onclick="saveCF()">Add Custom Food</button></div><div style="font-family:'Fraunces',serif;font-size:16px;font-weight:700;margin-bottom:9px">Shared Custom Foods</div><div class="card" id="cfList"><div class="no-data">No custom foods yet</div></div></div>
+  </div></div>
+</div>
+<div class="modal-ov" id="rModal">
+  <div class="modal">
+    <div class="mtitle" id="rmTitle">New Recipe</div>
+    <div class="fg" style="margin-bottom:9px"><label>Recipe Name</label><input type="text" id="rName" placeholder="e.g. Morning Smoothie"></div>
+    <div class="g2" style="margin-bottom:9px"><div class="fg"><label>Total Servings this batch makes</label><input type="number" id="rSrv" placeholder="1" value="1" min="0.25" step="0.25"></div><div class="fg"><label>Notes (optional)</label><input type="text" id="rNts" placeholder="Blend 60 seconds..."></div></div>
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--mu);margin-bottom:7px">Ingredients</div>
+    <div class="ilist" id="ingList"></div>
+    <div class="itot" id="ingTot" style="display:none"></div>
+    <div class="sw" style="margin-bottom:9px;position:relative"><span class="si">&#128269;</span><input type="text" id="ingS" placeholder="Search food to add as ingredient..." autocomplete="off"><div class="dd" id="ingDD"></div></div>
+    <div class="mact"><button class="btn bp" onclick="saveRec()">Save Recipe</button><button class="btn bo" style="flex:1" onclick="closeRM()">Cancel</button></div>
+  </div>
+</div>
+<script>
+const BUDGET=23;
+const cP=(c,s,su,p)=>Math.max(0,Math.round((c/33)+(s/9)+(su/10)-(p/10)));
+const BF=[
+  {name:"Apple (medium)",cat:"Fruit",cal:95,sat:0,sug:19,pro:0.5,srv:"1 medium"},
+  {name:"Banana (medium)",cat:"Fruit",cal:105,sat:0.1,sug:14,pro:1.3,srv:"1 medium"},
+  {name:"Orange (medium)",cat:"Fruit",cal:62,sat:0,sug:12,pro:1.2,srv:"1 medium"},
+  {name:"Grapes (1 cup)",cat:"Fruit",cal:104,sat:0.1,sug:23,pro:1.1,srv:"1 cup"},
+  {name:"Strawberries (1 cup)",cat:"Fruit",cal:49,sat:0,sug:7,pro:1,srv:"1 cup"},
+  {name:"Blueberries (1 cup)",cat:"Fruit",cal:84,sat:0.1,sug:15,pro:1.1,srv:"1 cup"},
+  {name:"Watermelon (1 cup)",cat:"Fruit",cal:46,sat:0,sug:9.4,pro:0.9,srv:"1 cup"},
+  {name:"Mango (1 cup)",cat:"Fruit",cal:107,sat:0.1,sug:24,pro:0.8,srv:"1 cup"},
+  {name:"Pineapple (1 cup)",cat:"Fruit",cal:82,sat:0,sug:16,pro:0.9,srv:"1 cup"},
+  {name:"Raspberries (1 cup)",cat:"Fruit",cal:64,sat:0,sug:5.4,pro:1.5,srv:"1 cup"},
+  {name:"Peach (medium)",cat:"Fruit",cal:59,sat:0,sug:13,pro:1.4,srv:"1 medium"},
+  {name:"Pear (medium)",cat:"Fruit",cal:101,sat:0,sug:17,pro:0.6,srv:"1 medium"},
+  {name:"Kiwi",cat:"Fruit",cal:42,sat:0,sug:6.7,pro:0.8,srv:"1 medium"},
+  {name:"Broccoli (1 cup)",cat:"Vegetable",cal:55,sat:0.1,sug:1.4,pro:3.7,srv:"1 cup"},
+  {name:"Carrots (1 cup)",cat:"Vegetable",cal:52,sat:0,sug:6,pro:1.2,srv:"1 cup"},
+  {name:"Spinach (1 cup raw)",cat:"Vegetable",cal:7,sat:0,sug:0.1,pro:0.9,srv:"1 cup"},
+  {name:"Cucumber (1 cup)",cat:"Vegetable",cal:16,sat:0,sug:2.2,pro:0.7,srv:"1 cup"},
+  {name:"Bell Pepper (medium)",cat:"Vegetable",cal:31,sat:0,sug:4.2,pro:1,srv:"1 medium"},
+  {name:"Tomato (medium)",cat:"Vegetable",cal:22,sat:0,sug:3.2,pro:1.1,srv:"1 medium"},
+  {name:"Zucchini (1 cup)",cat:"Vegetable",cal:20,sat:0,sug:2.5,pro:1.5,srv:"1 cup"},
+  {name:"Kale (1 cup raw)",cat:"Vegetable",cal:33,sat:0,sug:0.5,pro:2.9,srv:"1 cup"},
+  {name:"Cauliflower (1 cup)",cat:"Vegetable",cal:25,sat:0,sug:2,pro:2,srv:"1 cup"},
+  {name:"Sweet Potato (medium)",cat:"Vegetable",cal:103,sat:0,sug:7.4,pro:2.3,srv:"1 medium"},
+  {name:"Mushrooms (1 cup)",cat:"Vegetable",cal:21,sat:0,sug:1.5,pro:3,srv:"1 cup"},
+  {name:"Asparagus (5 spears)",cat:"Vegetable",cal:20,sat:0,sug:1.9,pro:2.2,srv:"5 spears"},
+  {name:"Chicken Breast (4 oz)",cat:"Protein",cal:185,sat:1.1,sug:0,pro:35,srv:"4 oz cooked"},
+  {name:"Chicken Thigh (4 oz)",cat:"Protein",cal:209,sat:3.4,sug:0,pro:28,srv:"4 oz cooked"},
+  {name:"Salmon (4 oz)",cat:"Protein",cal:206,sat:2.6,sug:0,pro:29,srv:"4 oz"},
+  {name:"Tuna canned in water (3 oz)",cat:"Protein",cal:109,sat:0.3,sug:0,pro:20,srv:"3 oz"},
+  {name:"Shrimp (4 oz cooked)",cat:"Protein",cal:112,sat:0.2,sug:0,pro:24,srv:"4 oz"},
+  {name:"Ground Beef 90% lean (4 oz)",cat:"Protein",cal:215,sat:4.5,sug:0,pro:28,srv:"4 oz"},
+  {name:"Ground Beef 80% lean (4 oz)",cat:"Protein",cal:290,sat:10,sug:0,pro:24,srv:"4 oz"},
+  {name:"Turkey Breast (4 oz)",cat:"Protein",cal:153,sat:0.5,sug:0,pro:34,srv:"4 oz"},
+  {name:"Egg (1 large)",cat:"Protein",cal:78,sat:1.6,sug:0.6,pro:6,srv:"1 egg"},
+  {name:"Egg Whites (3 large)",cat:"Protein",cal:51,sat:0,sug:0.9,pro:11,srv:"3 whites"},
+  {name:"Tofu firm (4 oz)",cat:"Protein",cal:86,sat:0.8,sug:0.8,pro:9.4,srv:"4 oz"},
+  {name:"Tilapia (4 oz)",cat:"Protein",cal:109,sat:0.9,sug:0,pro:22,srv:"4 oz"},
+  {name:"Pork Tenderloin (4 oz)",cat:"Protein",cal:136,sat:1.3,sug:0,pro:24,srv:"4 oz"},
+  {name:"Steak sirloin (4 oz)",cat:"Protein",cal:207,sat:4.5,sug:0,pro:26,srv:"4 oz"},
+  {name:"Edamame (half cup)",cat:"Protein",cal:94,sat:0.5,sug:1.6,pro:8.4,srv:"half cup"},
+  {name:"Black Beans (half cup)",cat:"Legume",cal:114,sat:0.1,sug:0.3,pro:7.6,srv:"half cup"},
+  {name:"Chickpeas (half cup)",cat:"Legume",cal:134,sat:0.1,sug:3.5,pro:7.3,srv:"half cup"},
+  {name:"Lentils (half cup cooked)",cat:"Legume",cal:115,sat:0.1,sug:1.8,pro:9,srv:"half cup"},
+  {name:"Kidney Beans (half cup)",cat:"Legume",cal:112,sat:0.1,sug:0.3,pro:7.7,srv:"half cup"},
+  {name:"Greek Yogurt 0% (6 oz)",cat:"Dairy",cal:100,sat:0,sug:7,pro:17,srv:"6 oz"},
+  {name:"Greek Yogurt 2% (6 oz)",cat:"Dairy",cal:130,sat:2,sug:8,pro:15,srv:"6 oz"},
+  {name:"Cottage Cheese 1% (half cup)",cat:"Dairy",cal:81,sat:0.5,sug:4,pro:14,srv:"half cup"},
+  {name:"Skim Milk (1 cup)",cat:"Dairy",cal:83,sat:0.1,sug:12,pro:8.3,srv:"1 cup"},
+  {name:"Whole Milk (1 cup)",cat:"Dairy",cal:149,sat:4.5,sug:12,pro:8,srv:"1 cup"},
+  {name:"Almond Milk unsweetened (1 cup)",cat:"Dairy",cal:30,sat:0,sug:0,pro:1,srv:"1 cup"},
+  {name:"Oat Milk (1 cup)",cat:"Dairy",cal:120,sat:0.5,sug:7,pro:3,srv:"1 cup"},
+  {name:"Cheddar Cheese (1 oz)",cat:"Dairy",cal:113,sat:6,sug:0.1,pro:7,srv:"1 oz"},
+  {name:"Mozzarella (1 oz)",cat:"Dairy",cal:85,sat:3.5,sug:0.3,pro:6.3,srv:"1 oz"},
+  {name:"Cream Cheese (2 tbsp)",cat:"Dairy",cal:101,sat:6.4,sug:0.9,pro:1.8,srv:"2 tbsp"},
+  {name:"String Cheese",cat:"Dairy",cal:80,sat:3.5,sug:0,pro:7,srv:"1 stick"},
+  {name:"Brown Rice (half cup cooked)",cat:"Grain",cal:108,sat:0.2,sug:0.4,pro:2.5,srv:"half cup"},
+  {name:"White Rice (half cup cooked)",cat:"Grain",cal:121,sat:0.1,sug:0,pro:2.2,srv:"half cup"},
+  {name:"Oatmeal (half cup dry)",cat:"Grain",cal:150,sat:0.5,sug:1,pro:5,srv:"half cup dry"},
+  {name:"Whole Wheat Bread (1 slice)",cat:"Bread",cal:70,sat:0.2,sug:1.8,pro:4,srv:"1 slice"},
+  {name:"White Bread (1 slice)",cat:"Bread",cal:79,sat:0.2,sug:1.8,pro:2.7,srv:"1 slice"},
+  {name:"Bagel plain",cat:"Bread",cal:270,sat:0.3,sug:5.3,pro:10.5,srv:"1 bagel"},
+  {name:"English Muffin",cat:"Bread",cal:134,sat:0.5,sug:2,pro:4.4,srv:"1 muffin"},
+  {name:"Pasta (1 cup cooked)",cat:"Grain",cal:220,sat:0.2,sug:0.5,pro:8,srv:"1 cup"},
+  {name:"Quinoa (half cup cooked)",cat:"Grain",cal:111,sat:0.3,sug:0.5,pro:4,srv:"half cup"},
+  {name:"Corn Tortilla (1 medium)",cat:"Bread",cal:52,sat:0.1,sug:0.1,pro:1.4,srv:"1 tortilla"},
+  {name:"Flour Tortilla large",cat:"Bread",cal:218,sat:1.4,sug:2.2,pro:5.6,srv:"1 large"},
+  {name:"Sourdough Bread (1 slice)",cat:"Bread",cal:93,sat:0.3,sug:0.6,pro:4,srv:"1 slice"},
+  {name:"Almonds (1 oz)",cat:"Nuts",cal:164,sat:1.2,sug:1.4,pro:6,srv:"1 oz"},
+  {name:"Walnuts (1 oz)",cat:"Nuts",cal:185,sat:1.7,sug:0.7,pro:4.3,srv:"1 oz"},
+  {name:"Cashews (1 oz)",cat:"Nuts",cal:157,sat:3.1,sug:1.7,pro:5.2,srv:"1 oz"},
+  {name:"Peanut Butter (2 tbsp)",cat:"Nuts",cal:188,sat:3.3,sug:2.5,pro:8,srv:"2 tbsp"},
+  {name:"Almond Butter (2 tbsp)",cat:"Nuts",cal:196,sat:1.9,sug:1.7,pro:7,srv:"2 tbsp"},
+  {name:"Avocado (half)",cat:"Fat",cal:117,sat:1.6,sug:0.5,pro:1.4,srv:"half avocado"},
+  {name:"Olive Oil (1 tbsp)",cat:"Fat",cal:119,sat:1.9,sug:0,pro:0,srv:"1 tbsp"},
+  {name:"Butter (1 tbsp)",cat:"Fat",cal:102,sat:7.2,sug:0,pro:0.1,srv:"1 tbsp"},
+  {name:"Potato Chips (1 oz)",cat:"Snack",cal:152,sat:1.5,sug:0.1,pro:2,srv:"1 oz"},
+  {name:"Popcorn air-popped (3 cups)",cat:"Snack",cal:93,sat:0.1,sug:0.2,pro:3,srv:"3 cups"},
+  {name:"Dark Chocolate (1 oz)",cat:"Snack",cal:170,sat:6,sug:14,pro:2.1,srv:"1 oz"},
+  {name:"Milk Chocolate (1 oz)",cat:"Snack",cal:153,sat:5.4,sug:16.5,pro:2.2,srv:"1 oz"},
+  {name:"Granola Bar",cat:"Snack",cal:190,sat:1.5,sug:13,pro:4,srv:"1 bar"},
+  {name:"Protein Bar Quest",cat:"Snack",cal:180,sat:3.5,sug:1,pro:21,srv:"1 bar"},
+  {name:"Rice Cakes (2)",cat:"Snack",cal:70,sat:0,sug:0,pro:1.4,srv:"2 cakes"},
+  {name:"Hummus (2 tbsp)",cat:"Snack",cal:50,sat:0.3,sug:0.2,pro:1.7,srv:"2 tbsp"},
+  {name:"Pretzels (1 oz)",cat:"Snack",cal:108,sat:0.2,sug:0.9,pro:2.6,srv:"1 oz"},
+  {name:"Beef Jerky (1 oz)",cat:"Snack",cal:116,sat:1.4,sug:3,pro:9.4,srv:"1 oz"},
+  {name:"Orange Juice (8 oz)",cat:"Beverage",cal:111,sat:0,sug:21,pro:1.7,srv:"8 oz"},
+  {name:"Coffee black (8 oz)",cat:"Beverage",cal:2,sat:0,sug:0,pro:0.3,srv:"8 oz"},
+  {name:"Latte whole milk (12 oz)",cat:"Beverage",cal:190,sat:7,sug:15,pro:10,srv:"12 oz"},
+  {name:"Latte skim milk (12 oz)",cat:"Beverage",cal:130,sat:0.5,sug:16,pro:11,srv:"12 oz"},
+  {name:"Soda regular (12 oz)",cat:"Beverage",cal:150,sat:0,sug:40,pro:0,srv:"12 oz"},
+  {name:"Kombucha (8 oz)",cat:"Beverage",cal:30,sat:0,sug:4,pro:0.4,srv:"8 oz"},
+  {name:"Protein Shake Fairlife",cat:"Beverage",cal:150,sat:1.5,sug:2,pro:30,srv:"1 bottle"},
+  {name:"Green Tea (8 oz)",cat:"Beverage",cal:2,sat:0,sug:0,pro:0.5,srv:"8 oz"},
+  {name:"Coconut Water (8 oz)",cat:"Beverage",cal:46,sat:0,sug:9,pro:1.7,srv:"8 oz"},
+  {name:"McDonalds Big Mac",cat:"Fast Food",cal:550,sat:16,sug:9,pro:25,srv:"1 burger"},
+  {name:"McDonalds Fries medium",cat:"Fast Food",cal:320,sat:2.5,sug:0,pro:4.5,srv:"medium"},
+  {name:"McDonalds McChicken",cat:"Fast Food",cal:400,sat:6,sug:5,pro:14,srv:"1 sandwich"},
+  {name:"Subway Turkey Breast 6in",cat:"Fast Food",cal:280,sat:1.5,sug:6,pro:20,srv:"6 inch"},
+  {name:"Pizza slice cheese",cat:"Fast Food",cal:285,sat:4.5,sug:3.6,pro:12,srv:"1 slice"},
+  {name:"Pizza slice pepperoni",cat:"Fast Food",cal:313,sat:6,sug:3.6,pro:13,srv:"1 slice"},
+  {name:"Chipotle Chicken Bowl no rice",cat:"Fast Food",cal:490,sat:9,sug:6,pro:47,srv:"1 bowl"},
+  {name:"Tim Hortons Bagel with CC",cat:"Fast Food",cal:440,sat:11,sug:8,pro:14,srv:"1 bagel"},
+  {name:"Starbucks Frappuccino",cat:"Fast Food",cal:370,sat:8,sug:52,pro:5,srv:"16 oz"},
+  {name:"Ketchup (1 tbsp)",cat:"Condiment",cal:19,sat:0,sug:3.7,pro:0.3,srv:"1 tbsp"},
+  {name:"Mustard (1 tbsp)",cat:"Condiment",cal:9,sat:0,sug:0.1,pro:0.6,srv:"1 tbsp"},
+  {name:"Mayo (1 tbsp)",cat:"Condiment",cal:94,sat:1.5,sug:0.1,pro:0.1,srv:"1 tbsp"},
+  {name:"Ranch Dressing (2 tbsp)",cat:"Condiment",cal:145,sat:2.6,sug:1.4,pro:0.4,srv:"2 tbsp"},
+  {name:"Salsa (2 tbsp)",cat:"Condiment",cal:10,sat:0,sug:1.5,pro:0.5,srv:"2 tbsp"},
+  {name:"Soy Sauce (1 tbsp)",cat:"Condiment",cal:10,sat:0,sug:0.9,pro:1,srv:"1 tbsp"},
+  {name:"Hot Sauce (1 tsp)",cat:"Condiment",cal:1,sat:0,sug:0.1,pro:0,srv:"1 tsp"},
+];
+BF.forEach(f=>f.points=cP(f.cal,f.sat,f.sug,f.pro));
+
+const toK=d=>d.toISOString().split('T')[0];
+const frK=k=>{const[y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d);};
+const tdK=()=>toK(new Date());
+const aD=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;};
+const soW=d=>{const x=new Date(d);x.setDate(x.getDate()-x.getDay());x.setHours(0,0,0,0);return x;};
+const fS=d=>d.toLocaleDateString('en-CA',{month:'short',day:'numeric'});
+const dim=(y,m)=>new Date(y,m+1,0).getDate();
+
+let U=null,FB=null,cK=tdK(),cM={breakfast:[],lunch:[],dinner:[],snack:[]};
+let sF=null,sav=false,pd='week',pO=0,ch={};
+let cFoods=[],recs=[],wData=[],wtS={goal:null,height:null},eRec=null,rIng=[];
+
+window.addEventListener('fb-ready',()=>{
+  FB=window._fb;
+  FB.onAuthStateChanged(FB.auth,async u=>{
+    if(u){U=u;document.getElementById('loginScreen').style.display='none';document.getElementById('mainApp').style.display='block';document.getElementById('uav').textContent=(u.displayName||u.email||'?')[0].toUpperCase();document.getElementById('soBtn').addEventListener('click',()=>FB.signOut(FB.auth));await Promise.all([ldCF(),ldRecs(),ldWD(),ldWS()]);rdv();rBrowse();}
+    else{U=null;document.getElementById('loginScreen').style.display='flex';document.getElementById('mainApp').style.display='none';}
+  });
+  document.getElementById('signInBtn').addEventListener('click',()=>FB.signInWithPopup(FB.auth,FB.provider).catch(e=>alert('Sign-in failed: '+e.message)));
+});
+
+const dR=k=>FB.doc(FB.db,'users',U.uid,'days',k);
+const wR=()=>FB.doc(FB.db,'users',U.uid,'meta','weight');
+const wsR=()=>FB.doc(FB.db,'users',U.uid,'meta','wtS');
+const sfR=()=>FB.collection(FB.db,'sharedFoods');
+const rcR=()=>FB.collection(FB.db,'users',U.uid,'recipes');
+
+async function fsL(k){if(ch[k])return JSON.parse(JSON.stringify(ch[k]));try{const s=await FB.getDoc(dR(k));const d=s.exists()?s.data():{breakfast:[],lunch:[],dinner:[],snack:[]};ch[k]=d;return JSON.parse(JSON.stringify(d));}catch{return{breakfast:[],lunch:[],dinner:[],snack:[]};}}
+async function fsS(k,d){ch[k]=JSON.parse(JSON.stringify(d));try{await FB.setDoc(dR(k),d);}catch(e){console.error(e);}}
+async function fsR2(keys){await Promise.all(keys.filter(k=>!ch[k]).map(fsL));const o={};keys.forEach(k=>o[k]=ch[k]||{breakfast:[],lunch:[],dinner:[],snack:[]});return o;}
+async function ldCF(){try{const q=await FB.getDocs(FB.query(sfR(),FB.orderBy('name')));cFoods=q.docs.map(d=>({id:d.id,...d.data(),points:cP(d.data().cal,d.data().sat,d.data().sug,d.data().pro)}));}catch{cFoods=[];}}
+async function ldRecs(){try{const q=await FB.getDocs(FB.query(rcR(),FB.orderBy('name')));recs=q.docs.map(d=>({id:d.id,...d.data()}));}catch{recs=[];}renderRecs();}
+async function ldWD(){try{const s=await FB.getDoc(wR());wData=s.exists()?(s.data().entries||[]):[];wData.sort((a,b)=>a.date.localeCompare(b.date));}catch{wData=[];}}
+async function ldWS(){try{const s=await FB.getDoc(wsR());if(s.exists())wtS=s.data();}catch{}if(wtS.goal)document.getElementById('wGlIn').value=wtS.goal;if(wtS.height)document.getElementById('wHtIn').value=wtS.height;}
+
+const aF=()=>[...BF,...cFoods];
+const aS=()=>[...aF(),...recs.map(r=>({...r,_r:true,points:Math.round(r.totalPts/r.servings)}))];
+
+function sv(v){['today','trends','weight','recipes','foods'].forEach((id,i)=>{document.getElementById('v'+id).classList.toggle('active',id===v);document.querySelectorAll('.tb')[i].classList.toggle('active',id===v);});if(v==='trends')renderT();if(v==='weight')renderW();if(v==='recipes')renderRecs();if(v==='foods')rBrowse();}
+
+function navDay(d){const nd=aD(frK(cK),d);if(nd>new Date())return;cK=toK(nd);rdv();}
+function jumpToday(){cK=tdK();rdv();}
+document.getElementById('wDate').value=tdK();
+
+async function rdv(){
+  const isT=cK===tdK(),isP=cK<tdK();const d=frK(cK);
+  document.getElementById('navDate').innerHTML=d.toLocaleDateString('en-CA',{weekday:'long',month:'long',day:'numeric'})+(isT?'<span class="tbdg">Today</span>':'');
+  document.getElementById('navSub').textContent=isT?'Current day':isP?'Past day':'';
+  document.getElementById('nxtBtn').disabled=isT;
+  document.getElementById('pastNote').style.display=isP?'block':'none';
+  document.getElementById('addSec').style.display=isP?'none':'block';
+  cM=await fsL(cK);['breakfast','lunch','dinner','snack'].forEach(rM);updS();
+}
+
+function updS(){const tot={};let total=0;['breakfast','lunch','dinner','snack'].forEach(m=>{const t=(cM[m]||[]).reduce((s,i)=>s+i.pts,0);tot[m]=t;total+=t;});document.getElementById('usedPts').textContent=total;document.getElementById('remPts').textContent=BUDGET-total;document.getElementById('bdgD').textContent=BUDGET;const pct=Math.min((total/BUDGET)*100,100);const bar=document.getElementById('pgBar');bar.style.width=pct+'%';bar.classList.toggle('over',total>BUDGET);['breakfast','lunch','dinner','snack'].forEach(m=>{document.getElementById('chip-'+m).textContent=tot[m];const b=document.getElementById('badge-'+m);b.textContent=tot[m]+' pts';b.classList.toggle('hf',tot[m]>0);});}
+
+function rM(meal){const c=document.getElementById('items-'+meal),items=cM[meal]||[];if(!items.length){c.innerHTML='<div class="mempty">No food added yet</div>';return;}c.innerHTML=items.map(i=>`<div class="mi"><span class="min">${i.name}</span><span class="miq">${i.qty!==1?'x'+i.qty:''}</span><span class="mip ${i.pts===0?'z':''}">${i.pts} pts</span><button class="mid" data-m="${meal}" data-id="${i.id}">x</button></div>`).join('');c.querySelectorAll('.mid').forEach(btn=>btn.addEventListener('click',async()=>{const id=parseFloat(btn.dataset.id),m=btn.dataset.m;cM[m]=cM[m].filter(i=>i.id!==id);rM(m);updS();await fsS(cK,cM);}));}
+
+const sEl=document.getElementById('foodSrch'),ddEl=document.getElementById('foodDD');
+function rDD(q){q=q.toLowerCase().trim();const all=aS();const f=q.length===0?all.slice(0,20):all.filter(x=>x.name.toLowerCase().includes(q)||(x.cat||'').toLowerCase().includes(q)).slice(0,30);if(!f.length){ddEl.innerHTML='<div class="no-res">No foods found</div>';}else{ddEl.innerHTML=f.map(x=>`<div class="di" data-i="${all.indexOf(x)}"><span class="fn">${x._r?'[Recipe] ':''} ${x.name}</span><span class="fc">${x._r?'Recipe':x.cat}</span><span class="fp ${x.points===0?'fpz':'fpg'}">${x.points===0?'0 pts':x.points+' pts'}</span></div>`).join('');ddEl.querySelectorAll('.di').forEach(el=>el.addEventListener('mousedown',e=>{e.preventDefault();sF=all[+el.dataset.i];sEl.value=sF.name;ddEl.classList.remove('open');updP();document.getElementById('addBtn').disabled=false;}));}ddEl.classList.add('open');}
+sEl.addEventListener('input',()=>{sF=null;document.getElementById('addBtn').disabled=true;document.getElementById('ptsPrev').classList.remove('vis');rDD(sEl.value);});
+sEl.addEventListener('focus',()=>rDD(sEl.value));
+sEl.addEventListener('blur',()=>setTimeout(()=>ddEl.classList.remove('open'),150));
+const qEl=document.getElementById('qtyIn');
+document.getElementById('qm').addEventListener('click',()=>{const v=parseFloat(qEl.value);if(v>0.25){qEl.value=Math.max(0.25,v-0.25);updP();}});
+document.getElementById('qp').addEventListener('click',()=>{qEl.value=Math.min(20,parseFloat(qEl.value)+0.25);updP();});
+qEl.addEventListener('input',updP);
+function updP(){if(!sF)return;const qty=parseFloat(qEl.value)||1;const pts=sF._r?Math.round((sF.totalPts/sF.servings)*qty):Math.max(0,Math.round(sF.points*qty));document.getElementById('prevVal').textContent=pts;document.getElementById('ptsPrev').classList.add('vis');}
+
+document.getElementById('addBtn').addEventListener('click',async()=>{
+  if(!sF||sav)return;sav=true;const btn=document.getElementById('addBtn');btn.disabled=true;btn.textContent='Saving...';
+  const qty=parseFloat(qEl.value)||1;const pts=sF._r?Math.round((sF.totalPts/sF.servings)*qty):Math.max(0,Math.round(sF.points*qty));
+  const meal=document.getElementById('mealSel').value;if(!cM[meal])cM[meal]=[];
+  cM[meal].push({name:sF.name,qty,pts,id:Date.now()+Math.random()});rM(meal);updS();await fsS(cK,cM);
+  sav=false;btn.textContent='+ Add to Meal';sEl.value='';sF=null;qEl.value=1;btn.disabled=true;document.getElementById('ptsPrev').classList.remove('vis');
+});
+
+async function clearDay(){if(!confirm('Clear all food entries for this day?'))return;cM={breakfast:[],lunch:[],dinner:[],snack:[]};await fsS(cK,cM);['breakfast','lunch','dinner','snack'].forEach(rM);updS();}
+
+function setPd(p,e){pd=p;pO=0;document.querySelectorAll('.pt').forEach(b=>b.classList.remove('active'));if(e&&e.target)e.target.classList.add('active');renderT();}
+function navP(d){pO=Math.min(0,pO+d);renderT();}
+
+function gPK(){const t=new Date();if(pd==='week'){const ws=soW(t);ws.setDate(ws.getDate()+pO*7);return Array.from({length:7},(_,i)=>toK(aD(ws,i)));}if(pd==='month'){let y=t.getFullYear(),m=t.getMonth()+pO;while(m<0){m+=12;y--;}while(m>11){m-=12;y++;}return Array.from({length:dim(y,m)},(_,i)=>toK(new Date(y,m,i+1)));}if(pd==='year'){const y=t.getFullYear()+pO;const k=[];for(let m=0;m<12;m++)for(let d=1;d<=dim(y,m);d++)k.push(toK(new Date(y,m,d)));return k;}return[];}
+function gPL(){const t=new Date();if(pd==='week'){const ws=soW(t);ws.setDate(ws.getDate()+pO*7);return fS(ws)+' - '+fS(aD(ws,6))+(pO===0?' (This week)':'');}if(pd==='month'){let y=t.getFullYear(),m=t.getMonth()+pO;while(m<0){m+=12;y--;}while(m>11){m-=12;y++;}return new Date(y,m,1).toLocaleDateString('en-CA',{month:'long',year:'numeric'});}if(pd==='year')return String(t.getFullYear()+pO);}
+const gDT=d=>['breakfast','lunch','dinner','snack'].reduce((s,m)=>s+(d[m]||[]).reduce((a,i)=>a+i.pts,0),0);
+const gMT=d=>{const o={};['breakfast','lunch','dinner','snack'].forEach(m=>o[m]=(d[m]||[]).reduce((a,i)=>a+i.pts,0));return o;};
+const hE=d=>['breakfast','lunch','dinner','snack'].some(m=>(d[m]||[]).length>0);
+
+async function renderT(){
+  document.getElementById('tLoad').style.display='flex';document.getElementById('tCont').style.opacity='.4';
+  document.getElementById('pLbl').textContent=gPL();document.getElementById('nextPB').disabled=pO>=0;
+  const keys=gPK(),today=tdK();const dm=await fsR2(keys);
+  document.getElementById('tLoad').style.display='none';document.getElementById('tCont').style.opacity='1';
+  const mc={breakfast:'#f59e0b',lunch:'#10b981',dinner:'#6366f1',snack:'#f43f5e'};
+  const tots=keys.map(k=>gDT(dm[k]));const tK=keys.filter(k=>hE(dm[k])&&k<=today);const tT=tK.map(k=>gDT(dm[k]));
+  if(tT.length>0){const avg=Math.round(tT.reduce((a,b)=>a+b,0)/tT.length);const un=tT.filter(t=>t<=BUDGET).length;const mn=Math.min(...tT);const bk=tK[tT.indexOf(mn)];document.getElementById('stAv').textContent=avg;document.getElementById('stUn').textContent=un;document.getElementById('stTr').textContent=tT.length;document.getElementById('stBe').textContent=mn;document.getElementById('stBD').textContent=frK(bk).toLocaleDateString('en-CA',{weekday:'short',month:'short',day:'numeric'});document.getElementById('stTo').textContent=tT.reduce((a,b)=>a+b,0);document.getElementById('stBu').textContent=BUDGET*keys.length+' budget';}
+  else{['stAv','stUn','stBe','stTo'].forEach(id=>document.getElementById(id).textContent='--');document.getElementById('stTr').textContent='0';document.getElementById('stBD').textContent='No data yet';document.getElementById('stBu').textContent=BUDGET*keys.length+' budget';}
+  if(pd==='year')rYC(keys,dm,tots,mc,today);else rBC(keys,dm,tots,mc,today);
+  document.getElementById('hmCard').style.display=pd==='month'?'block':'none';if(pd==='month')rHM(keys,dm,today);
+  const hK=[...tK].reverse().slice(0,30);
+  if(!hK.length){document.getElementById('histList').innerHTML='<div class="no-data">No data for this period yet.</div>';return;}
+  document.getElementById('histList').innerHTML=hK.map(k=>{const d=frK(k),pts=gDT(dm[k]),isT=k===today,ov=pts>BUDGET;const pct=Math.min((pts/BUDGET)*100,100);return`<div class="hrow${isT?' tr':''}" onclick="jtd('${k}')"><div style="min-width:100px"><div class="hd">${d.toLocaleDateString('en-CA',{weekday:'long'})}${isT?' <span class="tbdg">Today</span>':''}</div><div class="hdt">${d.toLocaleDateString('en-CA',{month:'short',day:'numeric',year:'numeric'})}</div></div><div class="hbw"><div class="hbf" style="width:${pct}%;background:${ov?'var(--ac)':'var(--go)'}"></div></div><div class="hpts ${ov?'ov':'un'}">${pts}</div><div class="hst">${ov?'<span style="color:var(--ac)">+'+(pts-BUDGET)+' over</span>':'<span style="color:var(--gn)">'+(BUDGET-pts)+' left</span>'}</div></div>`;}).join('');
+}
+
+function rBC(keys,dm,tots,mc,today){const mp=Math.max(...tots,BUDGET,1);const aM=keys.map(k=>gMT(dm[k]));const ms=Math.max(...aM.map(m=>m.breakfast+m.lunch+m.dinner+m.snack),BUDGET,1);const isW=pd==='week';document.getElementById('mChart').innerHTML=keys.map((k,i)=>{const iF=k>today,isT=k===today,has=hE(dm[k])&&!iF;const pts=tots[i],pct=has?Math.min((pts/mp)*100,100):0;const cls=!has?'emp':pts>BUDGET?'ovr':'und';const d=frK(k);const lbl=isW?d.toLocaleDateString('en-CA',{weekday:'short'}):d.getDate();const sl=isW||(d.getDate()%5===1||d.getDate()===1);return`<div class="bc"><div class="bpts">${has?pts:''}</div><div class="bw"><div class="b ${cls}${isT?' td':''}" style="height:${pct}%"></div></div><div class="bl">${sl?lbl:''}</div></div>`;}).join('');document.getElementById('sChart').innerHTML=keys.map((k,i)=>{const iF=k>today,isT=k===today,mt=aM[i],total=mt.breakfast+mt.lunch+mt.dinner+mt.snack;const has=hE(dm[k])&&!iF&&total>0;const d=frK(k),lbl=isW?d.toLocaleDateString('en-CA',{weekday:'short'}):d.getDate(),sl=isW||(d.getDate()%5===1||d.getDate()===1);if(!has)return`<div class="bc"><div class="bpts"></div><div class="bw"><div class="b emp" style="height:3px"></div></div><div class="bl">${sl?lbl:''}</div></div>`;const tp=Math.min((total/ms)*100,100);const segs=['breakfast','lunch','dinner','snack'].map(m=>`<div style="height:${(mt[m]/ms)*100}%;background:${mc[m]};flex-shrink:0"></div>`).join('');return`<div class="bc"><div class="bpts">${total}</div><div class="bw"><div${isT?' class="td"':''} style="height:${tp}%;width:100%;display:flex;flex-direction:column-reverse;border-radius:4px 4px 0 0;overflow:hidden">${segs}</div></div><div class="bl">${sl?lbl:''}</div></div>`;}).join('');}
+
+function rYC(keys,dm,tots,mc,today){const y=frK(keys[0]).getFullYear();const months=Array.from({length:12},(_,m)=>({label:new Date(y,m,1).toLocaleDateString('en-CA',{month:'short'}),total:0,mt:{breakfast:0,lunch:0,dinner:0,snack:0},has:false}));keys.forEach((k,i)=>{const m=frK(k).getMonth();if(hE(dm[k])&&k<=today){months[m].total+=tots[i];months[m].has=true;const mt=gMT(dm[k]);['breakfast','lunch','dinner','snack'].forEach(meal=>months[m].mt[meal]+=mt[meal]);}});const bpm=BUDGET*30,mp=Math.max(...months.map(m=>m.total),bpm,1),ms=Math.max(...months.map(m=>m.mt.breakfast+m.mt.lunch+m.mt.dinner+m.mt.snack),bpm,1);document.getElementById('mChart').innerHTML=months.map(m=>{const pct=m.has?Math.min((m.total/mp)*100,100):0;const cls=!m.has?'emp':m.total>bpm?'ovr':'und';return`<div class="bc"><div class="bpts">${m.has?m.total:''}</div><div class="bw"><div class="b ${cls}" style="height:${pct}%"></div></div><div class="bl">${m.label}</div></div>`;}).join('');document.getElementById('sChart').innerHTML=months.map(m=>{if(!m.has)return`<div class="bc"><div class="bpts"></div><div class="bw"><div class="b emp" style="height:3px"></div></div><div class="bl">${m.label}</div></div>`;const total=m.mt.breakfast+m.mt.lunch+m.mt.dinner+m.mt.snack;const tp=Math.min((total/ms)*100,100);const segs=['breakfast','lunch','dinner','snack'].map(meal=>`<div style="height:${(m.mt[meal]/ms)*100}%;background:${mc[meal]};flex-shrink:0"></div>`).join('');return`<div class="bc"><div class="bpts">${total}</div><div class="bw"><div style="height:${tp}%;width:100%;display:flex;flex-direction:column-reverse;border-radius:4px 4px 0 0;overflow:hidden">${segs}</div></div><div class="bl">${m.label}</div></div>`;}).join('');}
+
+function rHM(keys,dm,today){const d0=frK(keys[0]),dow=d0.getDay();let h='<div class="hmap">';['Su','Mo','Tu','We','Th','Fr','Sa'].forEach(d=>h+=`<div class="hmdl">${d}</div>`);for(let i=0;i<dow;i++)h+=`<div></div>`;keys.forEach(k=>{const d=frK(k),pts=gDT(dm[k]),has=hE(dm[k])&&k<=today,isT=k===today;const r=pts/BUDGET;let bg='#e2ddd5';if(has){bg=pts===0?'#10b981':r<=0.7?'#34d399':r<=1?'#f59e0b':'#ef4444';}h+=`<div class="hmc" style="background:${bg};opacity:${has?1:.22}${isT?';outline:2px solid #1a1714;outline-offset:1px':''}" onclick="jtd('${k}')"><span class="hmtp">${fS(d)}: ${has?pts+' pts':'no data'}</span></div>`;});h+='</div><div style="display:flex;gap:10px;margin-top:9px;font-size:11px;color:var(--mu);flex-wrap:wrap">';[['#34d399','Under budget'],['#f59e0b','Near budget'],['#ef4444','Over budget'],['#e2ddd5','No data']].forEach(([c,l])=>h+=`<div style="display:flex;align-items:center;gap:3px"><div style="width:9px;height:9px;border-radius:2px;background:${c}"></div>${l}</div>`);h+='</div>';document.getElementById('hmWrap').innerHTML=h;}
+function jtd(k){cK=k;sv('today');rdv();}
+
+async function logWt(){const d=document.getElementById('wDate').value,v=parseFloat(document.getElementById('wVal').value);if(!d||!v||v<50||v>600){alert('Please enter a valid date and weight.');return;}wData=wData.filter(e=>e.date!==d);wData.push({date:d,weight:v});wData.sort((a,b)=>a.date.localeCompare(b.date));try{await FB.setDoc(wR(),{entries:wData});}catch(e){console.error(e);}document.getElementById('wVal').value='';renderW();}
+
+async function saveWS(){wtS.goal=parseFloat(document.getElementById('wGlIn').value)||null;wtS.height=parseFloat(document.getElementById('wHtIn').value)||null;try{await FB.setDoc(wsR(),wtS);}catch(e){}renderW();alert('Settings saved!');}
+async function delWt(date){wData=wData.filter(e=>e.date!==date);try{await FB.setDoc(wR(),{entries:wData});}catch{}renderW();}
+
+function renderW(){
+  if(!wData.length){document.getElementById('wCur').textContent='--';document.getElementById('wGl').textContent=wtS.goal||'--';document.getElementById('wBM').textContent='--';document.getElementById('wDf').textContent='Log your first weight';document.getElementById('wTg').textContent='--';document.getElementById('gbWrap').style.display='none';document.getElementById('bmiPl').style.display='none';document.getElementById('wLog').innerHTML='<div class="no-data">No entries yet</div>';document.getElementById('wChart').innerHTML='<div class="no-data">Log some weights to see your chart!</div>';return;}
+  const last=wData[wData.length-1],prev=wData.length>1?wData[wData.length-2]:null;const diff=prev?(last.weight-prev.weight).toFixed(1):null;
+  document.getElementById('wCur').textContent=last.weight;document.getElementById('wGl').textContent=wtS.goal||'--';document.getElementById('wDf').textContent=diff?(diff>0?'+':'')+diff+' lbs from last':'First entry';
+  if(wtS.goal&&wData.length){const s=wData[0].weight,g=wtS.goal,tot=Math.abs(s-g),done=Math.abs(last.weight-s),pct=tot>0?Math.min((done/tot)*100,100):100;document.getElementById('gbWrap').style.display='block';document.getElementById('gbSt').textContent=s+' lbs';document.getElementById('gbGo').textContent='Goal: '+g+' lbs';document.getElementById('gbFl').style.width=pct+'%';document.getElementById('wTg').textContent=Math.abs(last.weight-g).toFixed(1)+' lbs to go';}else{document.getElementById('gbWrap').style.display='none';document.getElementById('wTg').textContent='Set a goal below';}
+  if(wtS.height&&last.weight){const h=wtS.height,bmi=((last.weight*703)/(h*h)).toFixed(1);const cat=bmi<18.5?'Underweight':bmi<25?'Normal weight':bmi<30?'Overweight':'Obese';const col=bmi<18.5?'#60a5fa':bmi<25?'#34d399':bmi<30?'#f59e0b':'#f87171';document.getElementById('wBM').textContent=bmi;document.getElementById('wBC').textContent=cat;document.getElementById('bmiPl').style.display='inline-flex';document.getElementById('bmiLb').textContent='BMI '+bmi+' - '+cat;document.getElementById('bmiDt').style.background=col;}else{document.getElementById('wBM').textContent='--';document.getElementById('wBC').textContent='Enter height for BMI';document.getElementById('bmiPl').style.display='none';}
+  if(wData.length>1){const W=560,H=160,P=36;const vals=wData.map(e=>e.weight);const mn=Math.min(...vals)-2,mx=Math.max(...vals)+2;const xS=(W-P*2)/(wData.length-1),yS=(H-P*2)/(mx-mn);const pts2=wData.map((e,i)=>`${P+i*xS},${H-P-(e.weight-mn)*yS}`).join(' ');const area=`${P},${H-P} `+wData.map((e,i)=>`${P+i*xS},${H-P-(e.weight-mn)*yS}`).join(' ')+` ${P+(wData.length-1)*xS},${H-P}`;let svg=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="overflow:visible"><defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#E9A923" stop-opacity=".3"/><stop offset="100%" stop-color="#E9A923" stop-opacity="0"/></linearGradient></defs><polygon points="${area}" fill="url(#wg)"/><polyline points="${pts2}" fill="none" stroke="#E9A923" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;wData.forEach((e,i)=>{const x=P+i*xS,y=H-P-(e.weight-mn)*yS;svg+=`<circle cx="${x}" cy="${y}" r="4" fill="#E9A923" stroke="#fff" stroke-width="2"/>`;if(wData.length<=15||i===0||i===wData.length-1)svg+=`<text x="${x}" y="${y-10}" text-anchor="middle" font-size="10" fill="#7A746B" font-family="DM Sans">${e.weight}</text>`;});if(wtS.goal){const gy=H-P-(wtS.goal-mn)*yS;if(gy>0&&gy<H)svg+=`<line x1="${P}" y1="${gy}" x2="${W-P}" y2="${gy}" stroke="#2D6A4F" stroke-width="1.5" stroke-dasharray="5,4"/><text x="${W-P+4}" y="${gy+4}" font-size="10" fill="#2D6A4F" font-family="DM Sans">Goal</text>`;}svg+='</svg>';document.getElementById('wChart').innerHTML=svg;}
+  document.getElementById('wLog').innerHTML=[...wData].reverse().slice(0,20).map((e,i,arr)=>{const p2=arr[i+1];const d2=p2?(e.weight-p2.weight).toFixed(1):null;return`<div class="wlr"><div class="wld">${frK(e.date).toLocaleDateString('en-CA',{weekday:'short',month:'short',day:'numeric'})}</div><div class="wlv">${e.weight} lbs</div><div class="wldf ${d2?d2>0?'up':'dn':''}">${d2?(d2>0?'+':'')+d2:'--'}</div><button class="wldl" onclick="delWt('${e.date}')">x</button></div>`;}).join('');
+}
+
+function openRM(id){eRec=id?recs.find(r=>r.id===id):null;rIng=eRec?[...eRec.ingredients]:[];document.getElementById('rmTitle').textContent=eRec?'Edit Recipe':'New Recipe';document.getElementById('rName').value=eRec?.name||'';document.getElementById('rSrv').value=eRec?.servings||1;document.getElementById('rNts').value=eRec?.notes||'';document.getElementById('ingS').value='';document.getElementById('rModal').classList.add('open');renderIL();setupIS();}
+function closeRM(){document.getElementById('rModal').classList.remove('open');eRec=null;rIng=[];}
+document.getElementById('rModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeRM();});
+
+function renderIL(){const total=rIng.reduce((s,i)=>s+i.pts,0);const srv=parseFloat(document.getElementById('rSrv').value)||1;const pps=Math.round(total/srv);document.getElementById('ingList').innerHTML=rIng.map((ing,i)=>`<div class="ir"><span class="irn">${ing.name}</span><span class="irq">x${ing.qty}</span><span class="irp">${ing.pts} pts</span><button class="ird" onclick="rmIng(${i})">x</button></div>`).join('');if(total>0){document.getElementById('ingTot').style.display='block';document.getElementById('ingTot').textContent=`Total: ${total} pts (${pps} pts per serving)`;}else{document.getElementById('ingTot').style.display='none';}}
+function rmIng(i){rIng.splice(i,1);renderIL();}
+
+function setupIS(){const idd=document.getElementById('ingDD'),iS=document.getElementById('ingS');iS.oninput=()=>{const q=iS.value.toLowerCase();const f=q.length===0?aF().slice(0,20):aF().filter(x=>x.name.toLowerCase().includes(q)||x.cat.toLowerCase().includes(q)).slice(0,30);if(!f.length){idd.innerHTML='<div class="no-res">No foods found</div>';}else{idd.innerHTML=f.map(x=>`<div class="di" data-i="${aF().indexOf(x)}"><span class="fn">${x.name}</span><span class="fc">${x.cat}</span><span class="fp ${x.points===0?'fpz':'fpg'}">${x.points===0?'0 pts':x.points+' pts'}</span></div>`).join('');idd.querySelectorAll('.di').forEach(el=>el.addEventListener('mousedown',e=>{e.preventDefault();const food=aF()[+el.dataset.i];rIng.push({name:food.name,qty:1,pts:food.points,foodRef:food.name});iS.value='';idd.classList.remove('open');renderIL();}));}idd.classList.add('open');};iS.onfocus=()=>{if(!iS.value.length)iS.oninput();};iS.onblur=()=>setTimeout(()=>idd.classList.remove('open'),150);}
+
+async function saveRec(){const name=document.getElementById('rName').value.trim();const servings=parseFloat(document.getElementById('rSrv').value)||1;const notes=document.getElementById('rNts').value.trim();if(!name){alert('Please enter a recipe name.');return;}if(!rIng.length){alert('Please add at least one ingredient.');return;}const totalPts=rIng.reduce((s,i)=>s+i.pts,0);const recipe={name,servings,notes,ingredients:rIng,totalPts,createdBy:U.displayName||U.email,updatedAt:new Date().toISOString()};try{if(eRec){recipe.id=eRec.id;await FB.setDoc(FB.doc(FB.db,'users',U.uid,'recipes',eRec.id),recipe);const idx=recs.findIndex(r=>r.id===eRec.id);if(idx>=0)recs[idx]=recipe;}else{const r=await FB.addDoc(rcR(),recipe);recipe.id=r.id;recs.push(recipe);}}catch(e){alert('Error saving: '+e.message);return;}closeRM();renderRecs();}
+
+function renderRecs(){const grid=document.getElementById('rGrid');if(!recs.length){grid.innerHTML='<div class="no-data" style="grid-column:1/-1">No recipes yet. Create your first one!</div>';return;}grid.innerHTML=recs.map(r=>{const pps=Math.round(r.totalPts/r.servings);return`<div class="rcard"><div class="rchdr"><div><div class="rcn">${r.name}</div><div class="rcs">${r.servings} serving${r.servings!==1?'s':''} - ${pps} pts/serving</div></div><div class="rcp">${r.totalPts} pts total</div></div>${r.notes?`<div class="rcno">${r.notes}</div>`:''}<div class="rcis">${(r.ingredients||[]).map(i=>`<div class="rci"><span>${i.name}</span><span>${i.pts} pts</span></div>`).join('')}</div><div class="rcac"><button class="btn bp bsm" style="flex:1" onclick="addRM('${r.id}')">+ Add to Today</button><button class="btn bo bsm" onclick="openRM('${r.id}')">Edit</button><button class="btn bdng bsm" onclick="delRM('${r.id}')">Delete</button></div><div class="rcby">by ${r.createdBy||'you'}</div></div>`;}).join('');}
+
+function addRM(id){const r=recs.find(x=>x.id===id);if(!r)return;sv('today');sF={...r,_r:true,points:Math.round(r.totalPts/r.servings)};document.getElementById('foodSrch').value=r.name;qEl.value=1;document.getElementById('addBtn').disabled=false;updP();}
+async function delRM(id){if(!confirm('Delete this recipe?'))return;try{await FB.deleteDoc(FB.doc(FB.db,'users',U.uid,'recipes',id));recs=recs.filter(r=>r.id!==id);}catch(e){alert('Error deleting');}renderRecs();}
+
+function setFT(t,e){document.querySelectorAll('.ftb').forEach(b=>b.classList.remove('active'));if(e&&e.target)e.target.classList.add('active');document.getElementById('ftBrowse').style.display=t==='browse'?'block':'none';document.getElementById('ftCalc').style.display=t==='calc'?'block':'none';document.getElementById('ftCustom').style.display=t==='custom'?'block':'none';if(t==='custom')renderCFL();}
+
+function rBrowse(){const q=(document.getElementById('bSrch')?.value||'').toLowerCase();const all=aF();const f=q?all.filter(x=>x.name.toLowerCase().includes(q)||x.cat.toLowerCase().includes(q)):all;const el=document.getElementById('browseList');if(!el)return;el.innerHTML=f.length?f.map(x=>`<div class="fli"><div><div class="flin">${x.name}</div><div class="flicat">${x.cat}${x.srv?' - '+x.srv:''}</div></div><div><div class="flip">${x.points}</div><div class="flim">Cal ${x.cal} - P ${x.pro}g</div></div></div>`).join(''):'<div class="no-data">No foods found</div>';}
+
+function runCalc(){const c=parseFloat(document.getElementById('cC').value)||0,s=parseFloat(document.getElementById('sFC').value)||0,su=parseFloat(document.getElementById('suC').value)||0,p=parseFloat(document.getElementById('prC').value)||0;const pts=cP(c,s,su,p);document.getElementById('crP').textContent=pts;document.getElementById('cRes').classList.add('vis');}
+
+function calcToCustom(){setFT('custom',null);document.querySelectorAll('.ftb').forEach((b,i)=>b.classList.toggle('active',i===2));document.getElementById('cfCal').value=document.getElementById('cC').value;document.getElementById('cfSat').value=document.getElementById('sFC').value;document.getElementById('cfSug').value=document.getElementById('suC').value;document.getElementById('cfPro').value=document.getElementById('prC').value;document.getElementById('cfN').focus();}
+
+async function saveCF(){const name=document.getElementById('cfN').value.trim();const cat=document.getElementById('cfC').value;const cal=parseFloat(document.getElementById('cfCal').value)||0;const sat=parseFloat(document.getElementById('cfSat').value)||0;const sug=parseFloat(document.getElementById('cfSug').value)||0;const pro=parseFloat(document.getElementById('cfPro').value)||0;const srv=document.getElementById('cfSrv').value.trim();if(!name||!cal){alert('Please enter a name and calories at minimum.');return;}const food={name,cat,cal,sat,sug,pro,srv,addedBy:U.displayName||U.email,addedAt:new Date().toISOString()};try{const ref=await FB.addDoc(sfR(),food);cFoods.push({id:ref.id,...food,points:cP(cal,sat,sug,pro)});}catch(e){alert('Error: '+e.message);return;}['cfN','cfCal','cfSat','cfSug','cfPro','cfSrv'].forEach(id=>document.getElementById(id).value='');renderCFL();rBrowse();alert('Custom food saved and shared!');}
+
+function renderCFL(){const el=document.getElementById('cfList');if(!cFoods.length){el.innerHTML='<div class="no-data">No custom foods yet</div>';return;}el.innerHTML=cFoods.map(f=>`<div class="fli"><div><div class="flin">${f.name}</div><div class="flicat">${f.cat}${f.srv?' - '+f.srv:''} - by ${f.addedBy||'unknown'}</div></div><div style="display:flex;align-items:center;gap:8px"><div><div class="flip">${f.points}</div><div class="flim">Cal ${f.cal}</div></div><button class="btn bdng bsm" onclick="delCF('${f.id}')">x</button></div></div>`).join('');}
+
+async function delCF(id){if(!confirm('Delete this custom food?'))return;try{await FB.deleteDoc(FB.doc(FB.db,'sharedFoods',id));cFoods=cFoods.filter(f=>f.id!==id);}catch(e){alert('Error deleting');}renderCFL();rBrowse();}
+</script>
+</body>
+</html>
+</head>
+<body>
+<div id="loginScreen">
+  <div class="lc">
+    <div class="llogo">Points<span>Track</span></div>
+    <div class="ltag">Track your WW-style points daily.<br>Weight, recipes, trends — all in one place.</div>
+    <button class="gbtn" id="signInBtn">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20H24v8h11.3C33.7 33.6 29.3 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3 0 5.7 1.1 7.8 2.9l5.7-5.7C34.1 6.5 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20c11 0 19.6-8 19.6-20 0-1.3-.1-2.7-.4-4z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.1 18.9 12 24 12c3 0 5.7 1.1 7.8 2.9l5.7-5.7C34.1 6.5 29.3 4 24 4 16.3 4 9.6 8.4 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-1.9 13.5-5l-6.2-5.2C29.5 35.5 26.9 36 24 36c-5.2 0-9.6-3.4-11.2-8.1l-6.5 5C9.8 39.7 16.4 44 24 44z"/><path fill="#1976D2" d="M43.6 20H24v8h11.3c-.8 2.3-2.3 4.3-4.3 5.7l6.2 5.2C40.9 35.5 44 30.2 44 24c0-1.3-.1-2.7-.4-4z"/></svg>
+      Continue with Google
+    </button>
+    <div class="lnote">Your data is private — only you can see your log.</div>
+  </div>
+</div>
+<div id="mainApp" style="display:none">
+  <header>
+    <div class="logo">Points<span>Track</span></div>
+    <div class="tabs">
+      <button class="tb active" onclick="sv('today')">Today</button>
+      <button class="tb" onclick="sv('trends')">📊 Trends</button>
+      <button class="tb" onclick="sv('weight')">⚖️ Weight</button>
+      <button class="tb" onclick="sv('recipes')">📖 Recipes</button>
+      <button class="tb" onclick="sv('foods')">🥗 Foods</button>
+    </div>
+    <div class="hright"><div class="uav" id="uav">?</div><button class="sobt" id="soBtn">Sign out</button></div>
+  </header>
+  <div class="view active" id="vtoday"><div class="con">
+    <div class="dnav">
+      <button class="nb" onclick="navDay(-1)">◀</button>
+      <div class="dnc"><div class="dnd" id="navDate"></div><div class="dns" id="navSub"></div></div>
+      <button class="nb" id="nxtBtn" onclick="navDay(1)">▶</button>
+    </div>
+    <div class="scard">
+      <div class="stop">
+        <div><div class="sl">Points Used</div><div style="display:flex;align-items:baseline;gap:5px;margin-top:3px"><span class="pb" id="usedPts">0</span><span class="ps">/ <span id="bdgD">23</span> pts</span></div></div>
+        <div style="text-align:right"><div class="sl">Remaining</div><div class="bn" id="remPts">23</div></div>
+      </div>
+      <div class="pw"><div class="pf" id="pgBar" style="width:0%"></div></div>
+      <div class="chips">
+        <div class="chip">🌅 <strong id="chip-breakfast">0</strong> pts</div>
+        <div class="chip">☀️ <strong id="chip-lunch">0</strong> pts</div>
+        <div class="chip">🌙 <strong id="chip-dinner">0</strong> pts</div>
+        <div class="chip">🍎 <strong id="chip-snack">0</strong> pts</div>
+      </div>
+    </div>
+    <div id="pastNote" class="pastnote" style="display:none">📅 Past day — read only. <a href="#" onclick="jumpToday()" style="color:var(--ac);font-weight:600">Go to today →</a></div>
+    <div class="addsec" id="addSec">
+      <div class="stitle">Add Food</div>
+      <div class="inforow">ℹ️ Points = (Cal÷33) + (SatFat÷9) + (Sugar÷10) − (Protein÷10), min 0</div>
+      <div class="g2" style="margin-bottom:10px">
+        <div class="fg full"><label>Search Food or Recipe</label><div class="sw"><span class="si">🔍</span><input type="text" id="foodSrch" placeholder="banana, chicken, My Smoothie…" autocomplete="off"><div class="dd" id="foodDD"></div></div></div>
+        <div class="fg"><label>Meal</label><div class="sa"><select id="mealSel"><option value="breakfast">🌅 Breakfast</option><option value="lunch">☀️ Lunch</option><option value="dinner">🌙 Dinner</option><option value="snack">🍎 Snack</option></select></div></div>
+        <div class="fg"><label>Servings</label><div class="qw"><button type="button" id="qm">−</button><input type="number" id="qtyIn" value="1" min="0.25" max="20" step="0.25"><button type="button" id="qp">+</button></div></div>
+      </div>
+      <div class="pprev" id="ptsPrev"><span class="pvl">Points for this entry</span><span class="pvv" id="prevVal">0</span></div>
+      <button class="btn bp" id="addBtn" disabled>+ Add to Meal</button>
+    </div>
+    <div class="mgrid">
+      <div class="mcard"><div class="mhdr"><div class="mnm">🌅 Breakfast</div><div class="mbdg" id="badge-breakfast">0 pts</div></div><div class="mitems" id="items-breakfast"><div class="mempty">No food added yet</div></div></div>
+      <div class="mcard"><div class="mhdr"><div class="mnm">☀️ Lunch</div><div class="mbdg" id="badge-lunch">0 pts</div></div><div class="mitems" id="items-lunch"><div class="mempty">No food added yet</div></div></div>
+      <div class="mcard"><div class="mhdr"><div class="mnm">🌙 Dinner</div><div class="mbdg" id="badge-dinner">0 pts</div></div><div class="mitems" id="items-dinner"><div class="mempty">No food added yet</div></div></div>
+      <div class="mcard"><div class="mhdr"><div class="mnm">🍎 Snack</div><div class="mbdg" id="badge-snack">0 pts</div></div><div class="mitems" id="items-snack"><div class="mempty">No food added yet</div></div></div>
+    </div>
+    <button class="btn bo" style="margin-top:14px;display:block;margin-left:auto" onclick="clearDay()">↺ Clear This Day</button>
+  </div></div>
+  <div class="view" id="vtrends"><div class="con">
+    <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:900;margin-bottom:3px">Trends</div>
+    <div style="font-size:13px;color:var(--mu);margin-bottom:16px">Your points history</div>
+    <div class="ptabs">
+      <button class="pt active" onclick="setPd('week',event)">📅 Week</button>
+      <button class="pt" onclick="setPd('month',event)">🗓 Month</button>
+      <button class="pt" onclick="setPd('year',event)">📆 Year</button>
+    </div>
+    <div class="pnav">
+      <button class="pnb" id="prevPB" onclick="navP(-1)">◀ Prev</button>
+      <div class="pnl" id="pLbl"></div>
+      <button class="pnb" id="nextPB" onclick="navP(1)">Next ▶</button>
+    </div>
+    <div id="tLoad" class="loading" style="display:none"><div class="spinner"></div> Loading…</div>
+    <div id="tCont">
+      <div class="srow">
+        <div class="sc"><div class="scl">Avg / Day</div><div class="scv gold" id="stAv">—</div><div class="scs">tracked days</div></div>
+        <div class="sc"><div class="scl">Days Under</div><div class="scv g" id="stUn">—</div><div class="scs">of <span id="stTr">0</span> days</div></div>
+        <div class="sc"><div class="scl">Best Day</div><div class="scv g" id="stBe">—</div><div class="scs" id="stBD">—</div></div>
+        <div class="sc"><div class="scl">Period Total</div><div class="scv gold" id="stTo">—</div><div class="scs">of <span id="stBu">—</span></div></div>
+      </div>
+      <div class="cc"><div class="ch">Points Per Day</div><div class="bch" id="mChart"></div></div>
+      <div class="cc"><div class="ch">Meal Breakdown</div><div class="sch" id="sChart"></div><div class="lgd"><div class="li"><div class="ld" style="background:#f59e0b"></div>Breakfast</div><div class="li"><div class="ld" style="background:#10b981"></div>Lunch</div><div class="li"><div class="ld" style="background:#6366f1"></div>Dinner</div><div class="li"><div class="ld" style="background:#f43f5e"></div>Snack</div></div></div>
+      <div class="cc" id="hmCard" style="display:none"><div class="ch">Monthly Heatmap</div><div id="hmWrap"></div></div>
+      <div class="cc"><div class="ch">History <span style="font-size:12px;font-weight:400;color:var(--mu)">(click to view)</span></div><div id="histList"></div></div>
+    </div>
+  </div></div>
+  <div class="view" id="vweight"><div class="con">
+    <div class="who">
+      <div class="whg">
+        <div><div class="whl">Current</div><div><span class="whv" id="wCur">—</span><span class="whu">lbs</span></div><div class="whs" id="wDf">—</div></div>
+        <div><div class="whl">Goal</div><div><span class="whv" id="wGl" style="color:#fff">—</span><span class="whu">lbs</span></div><div class="whs" id="wTg">—</div></div>
+        <div><div class="whl">BMI</div><div><span class="whv" id="wBM" style="color:#fff">—</span></div><div class="whs" id="wBC">—</div></div>
+      </div>
+      <div class="gbw" id="gbWrap" style="display:none"><div class="gbl"><span id="gbSt">—</span><span id="gbGo">Goal —</span></div><div class="gbt"><div class="gbf" id="gbFl" style="width:0%"></div></div></div>
+      <div class="bmip" id="bmiPl" style="display:none"><div class="bmid" id="bmiDt"></div><span id="bmiLb">—</span></div>
+    </div>
+    <div class="g2" style="margin-bottom:13px">
+      <div class="card cp">
+        <div class="stitle" style="font-size:16px">Log Weight</div>
+        <div class="fg" style="margin-bottom:9px"><label>Date</label><input type="date" id="wDate"></div>
+        <div class="fg" style="margin-bottom:9px"><label>Weight (lbs)</label><input type="number" id="wVal" placeholder="165.5" step="0.1" min="50" max="600"></div>
+        <button class="btn bp" onclick="logWt()">Save Weight</button>
+      </div>
+      <div class="card cp">
+        <div class="stitle" style="font-size:16px">Settings</div>
+        <div class="fg" style="margin-bottom:9px"><label>Goal Weight (lbs)</label><input type="number" id="wGlIn" placeholder="150" step="0.1"></div>
+        <div class="fg" style="margin-bottom:9px"><label>Height (inches, for BMI)</label><input type="number" id="wHtIn" placeholder="67" step="0.5"></div>
+        <button class="btn bp" onclick="saveWS()">Save Settings</button>
+      </div>
+    </div>
+    <div class="cc"><div class="ch">Weight Over Time</div><div class="lch" id="wChart"><div class="no-data">Log some weights to see your chart!</div></div></div>
+    <div class="cc"><div class="ch">Weight Log</div><div id="wLog"><div class="no-data">No entries yet</div></div></div>
+  </div></div>
+  <div class="view" id="vrecipes"><div class="con">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <div><div style="font-family:'Fraunces',serif;font-size:22px;font-weight:900">Recipes</div><div style="font-size:13px;color:var(--mu)">Save meals you make often — add with one click</div></div>
+      <button class="btn bp" style="width:auto;padding:9px 16px" onclick="openRM()">+ New Recipe</button>
+    </div>
+    <div id="rGrid" class="rgrid"><div class="no-data" style="grid-column:1/-1">No recipes yet. Create your first one!</div></div>
+  </div></div>
+  <div class="view" id="vfoods"><div class="con">
+    <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:900;margin-bottom:3px">Foods</div>
+    <div style="font-size:13px;color:var(--mu);margin-bottom:14px">Browse, calculate points, or add a custom food</div>
+    <div class="ftabs">
+      <button class="ftb active" onclick="setFT('browse',event)">Browse</button>
+      <button class="ftb" onclick="setFT('calc',event)">Calculator</button>
+      <button class="ftb" onclick="setFT('custom',event)">+ Custom Food</button>
+    </div>
+    <div id="ftBrowse">
+      <div class="card" style="margin-bottom:11px;padding:11px 14px"><div class="sw"><span class="si">🔍</span><input type="text" id="bSrch" placeholder="Search all foods…" oninput="rBrowse()"></div></div>
+      <div class="card" id="browseList"></div>
+    </div>
+    <div id="ftCalc" style="display:none">
+      <div class="card cp">
+        <div class="stitle" style="font-size:16px">Points Calculator</div>
+        <div style="font-size:13px;color:var(--mu);margin-bottom:13px">Enter any food label nutrition to calculate WW PersonalPoints</div>
+        <div class="g2" style="margin-bottom:10px">
+          <div class="fg"><label>Calories</label><input type="number" id="cC" placeholder="250"></div>
+          <div class="fg"><label>Saturated Fat (g)</label><input type="number" id="sFC" placeholder="3.5"></div>
+          <div class="fg"><label>Sugar (g)</label><input type="number" id="suC" placeholder="12"></div>
+          <div class="fg"><label>Protein (g)</label><input type="number" id="prC" placeholder="8"></div>
+        </div>
+        <button class="btn bp" onclick="runCalc()">Calculate Points</button>
+        <div class="cres" id="cRes"><div class="crp" id="crP">0</div><div class="crl">PersonalPoints per serving</div><button class="btn bo bsm" style="margin-top:9px" onclick="calcToCustom()">Save as Custom Food</button></div>
+      </div>
+    </div>
+    <div id="ftCustom" style="display:none">
+      <div class="card cp" style="margin-bottom:13px">
+        <div class="stitle" style="font-size:16px">Add Custom Food</div>
+        <div style="font-size:13px;color:var(--mu);margin-bottom:13px">Shared with all users of the app</div>
+        <div class="g2" style="margin-bottom:10px">
+          <div class="fg full"><label>Food Name</label><input type="text" id="cfN" placeholder="e.g. My Protein Shake"></div>
+          <div class="fg full"><label>Category</label><div class="sa"><select id="cfC"><option>Protein</option><option>Dairy</option><option>Grain</option><option>Fruit</option><option>Vegetable</option><option>Snack</option><option>Beverage</option><option>Fast Food</option><option>Custom</option></select></div></div>
+          <div class="fg"><label>Calories</label><input type="number" id="cfCal" placeholder="200"></div>
+          <div class="fg"><label>Saturated Fat (g)</label><input type="number" id="cfSat" placeholder="2"></div>
+          <div class="fg"><label>Sugar (g)</label><input type="number" id="cfSug" placeholder="10"></div>
+          <div class="fg"><label>Protein (g)</label><input type="number" id="cfPro" placeholder="15"></div>
+          <div class="fg full"><label>Serving Size (optional)</label><input type="text" id="cfSrv" placeholder="1 cup, 1 bar, 250ml…"></div>
+        </div>
+        <button class="btn bp" onclick="saveCF()">Add Custom Food</button>
+      </div>
+      <div style="font-family:'Fraunces',serif;font-size:16px;font-weight:700;margin-bottom:9px">Shared Custom Foods</div>
+      <div class="card" id="cfList"><div class="no-data">No custom foods yet</div></div>
+    </div>
+  </div></div>
+</div>
+<div class="modal-ov" id="rModal">
+  <div class="modal">
+    <div class="mtitle" id="rmTitle">New Recipe</div>
+    <div class="fg" style="margin-bottom:9px"><label>Recipe Name</label><input type="text" id="rName" placeholder="e.g. Morning Smoothie"></div>
+    <div class="g2" style="margin-bottom:9px">
+      <div class="fg"><label>Total Servings batch makes</label><input type="number" id="rSrv" value="1" min="0.25" step="0.25"></div>
+      <div class="fg"><label>Notes (optional)</label><input type="text" id="rNts" placeholder="Blend 60 seconds…"></div>
+    </div>
+    <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:var(--mu);margin-bottom:7px">Ingredients</div>
+    <div class="ilist" id="ingList"></div>
+    <div class="itot" id="ingTot" style="display:none"></div>
+    <div class="sw" style="margin-bottom:9px;position:relative"><span class="si">🔍</span><input type="text" id="ingS" placeholder="Search food to add as ingredient…" autocomplete="off"><div class="dd" id="ingDD"></div></div>
+    <div class="mact">
+      <button class="btn bp" onclick="saveRec()">Save Recipe</button>
+      <button class="btn bo" style="flex:1" onclick="closeRM()">Cancel</button>
+    </div>
+  </div>
+</div>
+<script>
+const BUDGET=23;
+const cP=(c,s,su,p)=>Math.max(0,Math.round((c/33)+(s/9)+(su/10)-(p/10)));
+const BF=[
+  {name:"Apple (medium)",cat:"Fruit",cal:95,sat:0,sug:19,pro:0.5,srv:"1 medium"},
+  {name:"Banana (medium)",cat:"Fruit",cal:105,sat:0.1,sug:14,pro:1.3,srv:"1 medium"},
+  {name:"Orange (medium)",cat:"Fruit",cal:62,sat:0,sug:12,pro:1.2,srv:"1 medium"},
+  {name:"Grapes (1 cup)",cat:"Fruit",cal:104,sat:0.1,sug:23,pro:1.1,srv:"1 cup"},
+  {name:"Strawberries (1 cup)",cat:"Fruit",cal:49,sat:0,sug:7,pro:1,srv:"1 cup"},
+  {name:"Blueberries (1 cup)",cat:"Fruit",cal:84,sat:0.1,sug:15,pro:1.1,srv:"1 cup"},
+  {name:"Watermelon (1 cup)",cat:"Fruit",cal:46,sat:0,sug:9.4,pro:0.9,srv:"1 cup"},
+  {name:"Mango (1 cup)",cat:"Fruit",cal:107,sat:0.1,sug:24,pro:0.8,srv:"1 cup"},
+  {name:"Pineapple (1 cup)",cat:"Fruit",cal:82,sat:0,sug:16,pro:0.9,srv:"1 cup"},
+  {name:"Raspberries (1 cup)",cat:"Fruit",cal:64,sat:0,sug:5.4,pro:1.5,srv:"1 cup"},
+  {name:"Peach (medium)",cat:"Fruit",cal:59,sat:0,sug:13,pro:1.4,srv:"1 medium"},
+  {name:"Pear (medium)",cat:"Fruit",cal:101,sat:0,sug:17,pro:0.6,srv:"1 medium"},
+  {name:"Kiwi (medium)",cat:"Fruit",cal:42,sat:0,sug:6.7,pro:0.8,srv:"1 medium"},
+  {name:"Broccoli (1 cup)",cat:"Vegetable",cal:55,sat:0.1,sug:1.4,pro:3.7,srv:"1 cup"},
+  {name:"Carrots (1 cup)",cat:"Vegetable",cal:52,sat:0,sug:6,pro:1.2,srv:"1 cup"},
+  {name:"Spinach (1 cup raw)",cat:"Vegetable",cal:7,sat:0,sug:0.1,pro:0.9,srv:"1 cup"},
+  {name:"Cucumber (1 cup)",cat:"Vegetable",cal:16,sat:0,sug:2.2,pro:0.7,srv:"1 cup"},
+  {name:"Bell Pepper (medium)",cat:"Vegetable",cal:31,sat:0,sug:4.2,pro:1,srv:"1 medium"},
+  {name:"Tomato (medium)",cat:"Vegetable",cal:22,sat:0,sug:3.2,pro:1.1,srv:"1 medium"},
+  {name:"Zucchini (1 cup)",cat:"Vegetable",cal:20,sat:0,sug:2.5,pro:1.5,srv:"1 cup"},
+  {name:"Kale (1 cup raw)",cat:"Vegetable",cal:33,sat:0,sug:0.5,pro:2.9,srv:"1 cup"},
+  {name:"Cauliflower (1 cup)",cat:"Vegetable",cal:25,sat:0,sug:2,pro:2,srv:"1 cup"},
+  {name:"Sweet Potato (medium)",cat:"Vegetable",cal:103,sat:0,sug:7.4,pro:2.3,srv:"1 medium"},
+  {name:"Mushrooms (1 cup)",cat:"Vegetable",cal:21,sat:0,sug:1.5,pro:3,srv:"1 cup"},
+  {name:"Asparagus (5 spears)",cat:"Vegetable",cal:20,sat:0,sug:1.9,pro:2.2,srv:"5 spears"},
+  {name:"Celery (2 stalks)",cat:"Vegetable",cal:12,sat:0,sug:1.4,pro:0.5,srv:"2 stalks"},
+  {name:"Green Beans (1 cup)",cat:"Vegetable",cal:31,sat:0,sug:3.6,pro:1.8,srv:"1 cup"},
+  {name:"Chicken Breast (4 oz)",cat:"Protein",cal:185,sat:1.1,sug:0,pro:35,srv:"4 oz cooked"},
+  {name:"Chicken Thigh (4 oz)",cat:"Protein",cal:209,sat:3.4,sug:0,pro:28,srv:"4 oz cooked"},
+  {name:"Salmon (4 oz)",cat:"Protein",cal:206,sat:2.6,sug:0,pro:29,srv:"4 oz"},
+  {name:"Tuna canned water (3 oz)",cat:"Protein",cal:109,sat:0.3,sug:0,pro:20,srv:"3 oz"},
+  {name:"Shrimp (4 oz cooked)",cat:"Protein",cal:112,sat:0.2,sug:0,pro:24,srv:"4 oz"},
+  {name:"Ground Beef 90% lean (4 oz)",cat:"Protein",cal:215,sat:4.5,sug:0,pro:28,srv:"4 oz"},
+  {name:"Ground Beef 80% lean (4 oz)",cat:"Protein",cal:290,sat:10,sug:0,pro:24,srv:"4 oz"},
+  {name:"Turkey Breast (4 oz)",cat:"Protein",cal:153,sat:0.5,sug:0,pro:34,srv:"4 oz"},
+  {name:"Egg (1 large)",cat:"Protein",cal:78,sat:1.6,sug:0.6,pro:6,srv:"1 egg"},
+  {name:"Egg Whites (3 large)",cat:"Protein",cal:51,sat:0,sug:0.9,pro:11,srv:"3 whites"},
+  {name:"Tofu firm (4 oz)",cat:"Protein",cal:86,sat:0.8,sug:0.8,pro:9.4,srv:"4 oz"},
+  {name:"Tilapia (4 oz)",cat:"Protein",cal:109,sat:0.9,sug:0,pro:22,srv:"4 oz"},
+  {name:"Pork Tenderloin (4 oz)",cat:"Protein",cal:136,sat:1.3,sug:0,pro:24,srv:"4 oz"},
+  {name:"Steak sirloin (4 oz)",cat:"Protein",cal:207,sat:4.5,sug:0,pro:26,srv:"4 oz"},
+  {name:"Edamame (half cup)",cat:"Protein",cal:94,sat:0.5,sug:1.6,pro:8.4,srv:"half cup"},
+  {name:"Black Beans (half cup)",cat:"Legume",cal:114,sat:0.1,sug:0.3,pro:7.6,srv:"half cup"},
+  {name:"Chickpeas (half cup)",cat:"Legume",cal:134,sat:0.1,sug:3.5,pro:7.3,srv:"half cup"},
+  {name:"Lentils (half cup cooked)",cat:"Legume",cal:115,sat:0.1,sug:1.8,pro:9,srv:"half cup"},
+  {name:"Kidney Beans (half cup)",cat:"Legume",cal:112,sat:0.1,sug:0.3,pro:7.7,srv:"half cup"},
+  {name:"Greek Yogurt 0% (6 oz)",cat:"Dairy",cal:100,sat:0,sug:7,pro:17,srv:"6 oz"},
+  {name:"Greek Yogurt 2% (6 oz)",cat:"Dairy",cal:130,sat:2,sug:8,pro:15,srv:"6 oz"},
+  {name:"Cottage Cheese 1% (half cup)",cat:"Dairy",cal:81,sat:0.5,sug:4,pro:14,srv:"half cup"},
+  {name:"Skim Milk (1 cup)",cat:"Dairy",cal:83,sat:0.1,sug:12,pro:8.3,srv:"1 cup"},
+  {name:"Whole Milk (1 cup)",cat:"Dairy",cal:149,sat:4.5,sug:12,pro:8,srv:"1 cup"},
+  {name:"Almond Milk unsweetened (1 cup)",cat:"Dairy",cal:30,sat:0,sug:0,pro:1,srv:"1 cup"},
+  {name:"Oat Milk (1 cup)",cat:"Dairy",cal:120,sat:0.5,sug:7,pro:3,srv:"1 cup"},
+  {name:"Cheddar Cheese (1 oz)",cat:"Dairy",cal:113,sat:6,sug:0.1,pro:7,srv:"1 oz"},
+  {name:"Mozzarella (1 oz)",cat:"Dairy",cal:85,sat:3.5,sug:0.3,pro:6.3,srv:"1 oz"},
+  {name:"Cream Cheese (2 tbsp)",cat:"Dairy",cal:101,sat:6.4,sug:0.9,pro:1.8,srv:"2 tbsp"},
+  {name:"String Cheese (1 stick)",cat:"Dairy",cal:80,sat:3.5,sug:0,pro:7,srv:"1 stick"},
+  {name:"Brown Rice (half cup cooked)",cat:"Grain",cal:108,sat:0.2,sug:0.4,pro:2.5,srv:"half cup"},
+  {name:"White Rice (half cup cooked)",cat:"Grain",cal:121,sat:0.1,sug:0,pro:2.2,srv:"half cup"},
+  {name:"Oatmeal (half cup dry)",cat:"Grain",cal:150,sat:0.5,sug:1,pro:5,srv:"half cup dry"},
+  {name:"Whole Wheat Bread (1 slice)",cat:"Bread",cal:70,sat:0.2,sug:1.8,pro:4,srv:"1 slice"},
+  {name:"White Bread (1 slice)",cat:"Bread",cal:79,sat:0.2,sug:1.8,pro:2.7,srv:"1 slice"},
+  {name:"Bagel plain",cat:"Bread",cal:270,sat:0.3,sug:5.3,pro:10.5,srv:"1 bagel"},
+  {name:"English Muffin",cat:"Bread",cal:134,sat:0.5,sug:2,pro:4.4,srv:"1 muffin"},
+  {name:"Pasta (1 cup cooked)",cat:"Grain",cal:220,sat:0.2,sug:0.5,pro:8,srv:"1 cup"},
+  {name:"Quinoa (half cup cooked)",cat:"Grain",cal:111,sat:0.3,sug:0.5,pro:4,srv:"half cup"},
+  {name:"Corn Tortilla (medium)",cat:"Bread",cal:52,sat:0.1,sug:0.1,pro:1.4,srv:"1 tortilla"},
+  {name:"Flour Tortilla large",cat:"Bread",cal:218,sat:1.4,sug:2.2,pro:5.6,srv:"1 large"},
+  {name:"Sourdough Bread (1 slice)",cat:"Bread",cal:93,sat:0.3,sug:0.6,pro:4,srv:"1 slice"},
+  {name:"Whole Wheat Pasta (1 cup)",cat:"Grain",cal:174,sat:0.4,sug:0.7,pro:7.5,srv:"1 cup cooked"},
+  {name:"Almonds (1 oz)",cat:"Nuts",cal:164,sat:1.2,sug:1.4,pro:6,srv:"1 oz ~23"},
+  {name:"Walnuts (1 oz)",cat:"Nuts",cal:185,sat:1.7,sug:0.7,pro:4.3,srv:"1 oz"},
+  {name:"Cashews (1 oz)",cat:"Nuts",cal:157,sat:3.1,sug:1.7,pro:5.2,srv:"1 oz"},
+  {name:"Peanut Butter (2 tbsp)",cat:"Nuts",cal:188,sat:3.3,sug:2.5,pro:8,srv:"2 tbsp"},
+  {name:"Almond Butter (2 tbsp)",cat:"Nuts",cal:196,sat:1.9,sug:1.7,pro:7,srv:"2 tbsp"},
+  {name:"Avocado (half)",cat:"Fat",cal:117,sat:1.6,sug:0.5,pro:1.4,srv:"half avocado"},
+  {name:"Olive Oil (1 tbsp)",cat:"Fat",cal:119,sat:1.9,sug:0,pro:0,srv:"1 tbsp"},
+  {name:"Butter (1 tbsp)",cat:"Fat",cal:102,sat:7.2,sug:0,pro:0.1,srv:"1 tbsp"},
+  {name:"Potato Chips (1 oz)",cat:"Snack",cal:152,sat:1.5,sug:0.1,pro:2,srv:"1 oz"},
+  {name:"Popcorn air-popped (3 cups)",cat:"Snack",cal:93,sat:0.1,sug:0.2,pro:3,srv:"3 cups"},
+  {name:"Dark Chocolate (1 oz)",cat:"Snack",cal:170,sat:6,sug:14,pro:2.1,srv:"1 oz"},
+  {name:"Milk Chocolate (1 oz)",cat:"Snack",cal:153,sat:5.4,sug:16.5,pro:2.2,srv:"1 oz"},
+  {name:"Granola Bar",cat:"Snack",cal:190,sat:1.5,sug:13,pro:4,srv:"1 bar"},
+  {name:"Protein Bar Quest",cat:"Snack",cal:180,sat:3.5,sug:1,pro:21,srv:"1 bar"},
+  {name:"Rice Cakes (2)",cat:"Snack",cal:70,sat:0,sug:0,pro:1.4,srv:"2 cakes"},
+  {name:"Hummus (2 tbsp)",cat:"Snack",cal:50,sat:0.3,sug:0.2,pro:1.7,srv:"2 tbsp"},
+  {name:"Pretzels (1 oz)",cat:"Snack",cal:108,sat:0.2,sug:0.9,pro:2.6,srv:"1 oz"},
+  {name:"Beef Jerky (1 oz)",cat:"Snack",cal:116,sat:1.4,sug:3,pro:9.4,srv:"1 oz"},
+  {name:"Orange Juice (8 oz)",cat:"Beverage",cal:111,sat:0,sug:21,pro:1.7,srv:"8 oz"},
+  {name:"Coffee black (8 oz)",cat:"Beverage",cal:2,sat:0,sug:0,pro:0.3,srv:"8 oz"},
+  {name:"Latte whole milk (12 oz)",cat:"Beverage",cal:190,sat:7,sug:15,pro:10,srv:"12 oz"},
+  {name:"Latte skim milk (12 oz)",cat:"Beverage",cal:130,sat:0.5,sug:16,pro:11,srv:"12 oz"},
+  {name:"Soda regular (12 oz)",cat:"Beverage",cal:150,sat:0,sug:40,pro:0,srv:"12 oz"},
+  {name:"Kombucha (8 oz)",cat:"Beverage",cal:30,sat:0,sug:4,pro:0.4,srv:"8 oz"},
+  {name:"Protein Shake Fairlife",cat:"Beverage",cal:150,sat:1.5,sug:2,pro:30,srv:"1 bottle"},
+  {name:"Green Tea (8 oz)",cat:"Beverage",cal:2,sat:0,sug:0,pro:0.5,srv:"8 oz"},
+  {name:"Coconut Water (8 oz)",cat:"Beverage",cal:46,sat:0,sug:9,pro:1.7,srv:"8 oz"},
+  {name:"McDonalds Big Mac",cat:"Fast Food",cal:550,sat:16,sug:9,pro:25,srv:"1 burger"},
+  {name:"McDonalds Fries medium",cat:"Fast Food",cal:320,sat:2.5,sug:0,pro:4.5,srv:"medium"},
+  {name:"McDonalds McChicken",cat:"Fast Food",cal:400,sat:6,sug:5,pro:14,srv:"1 sandwich"},
+  {name:"Subway Turkey Breast 6in",cat:"Fast Food",cal:280,sat:1.5,sug:6,pro:20,srv:"6 inch"},
+  {name:"Pizza slice cheese",cat:"Fast Food",cal:285,sat:4.5,sug:3.6,pro:12,srv:"1 slice"},
+  {name:"Pizza slice pepperoni",cat:"Fast Food",cal:313,sat:6,sug:3.6,pro:13,srv:"1 slice"},
+  {name:"Chipotle Chicken Bowl no rice",cat:"Fast Food",cal:490,sat:9,sug:6,pro:47,srv:"1 bowl"},
+  {name:"Tim Hortons Bagel with Cream Cheese",cat:"Fast Food",cal:440,sat:11,sug:8,pro:14,srv:"1 bagel"},
+  {name:"Starbucks Frappuccino",cat:"Fast Food",cal:370,sat:8,sug:52,pro:5,srv:"16 oz"},
+  {name:"Ketchup (1 tbsp)",cat:"Condiment",cal:19,sat:0,sug:3.7,pro:0.3,srv:"1 tbsp"},
+  {name:"Mustard (1 tbsp)",cat:"Condiment",cal:9,sat:0,sug:0.1,pro:0.6,srv:"1 tbsp"},
+  {name:"Mayo (1 tbsp)",cat:"Condiment",cal:94,sat:1.5,sug:0.1,pro:0.1,srv:"1 tbsp"},
+  {name:"Ranch Dressing (2 tbsp)",cat:"Condiment",cal:145,sat:2.6,sug:1.4,pro:0.4,srv:"2 tbsp"},
+  {name:"Salsa (2 tbsp)",cat:"Condiment",cal:10,sat:0,sug:1.5,pro:0.5,srv:"2 tbsp"},
+  {name:"Soy Sauce (1 tbsp)",cat:"Condiment",cal:10,sat:0,sug:0.9,pro:1,srv:"1 tbsp"},
+  {name:"Hot Sauce (1 tsp)",cat:"Condiment",cal:1,sat:0,sug:0.1,pro:0,srv:"1 tsp"},
+];
+BF.forEach(f=>f.points=cP(f.cal,f.sat,f.sug,f.pro));
+
+const toK=d=>d.toISOString().split('T')[0];
+const frK=k=>{const[y,m,d]=k.split('-').map(Number);return new Date(y,m-1,d);};
+const tdK=()=>toK(new Date());
+const aD=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;};
+const soW=d=>{const x=new Date(d);x.setDate(x.getDate()-x.getDay());x.setHours(0,0,0,0);return x;};
+const fS=d=>d.toLocaleDateString('en-CA',{month:'short',day:'numeric'});
+const dim=(y,m)=>new Date(y,m+1,0).getDate();
+
+let U=null,FB=null,cK=tdK(),cM={breakfast:[],lunch:[],dinner:[],snack:[]};
+let sF=null,sav=false,pd='week',pO=0,ch={};
+let cFoods=[],recs=[],wData=[],wtS={goal:null,height:null},eRec=null,rIng=[];
+
+window.addEventListener('fb-ready',()=>{
+  FB=window._fb;
+  FB.onAuthStateChanged(FB.auth,async u=>{
+    if(u){
+      U=u;
+      document.getElementById('loginScreen').style.display='none';
+      document.getElementById('mainApp').style.display='block';
+      document.getElementById('uav').textContent=(u.displayName||u.email||'?')[0].toUpperCase();
+      document.getElementById('soBtn').onclick=()=>FB.signOut(FB.auth);
+      await Promise.all([ldCF(),ldRecs(),ldWD(),ldWS()]);
+      rdv();rBrowse();
+    } else {
+      U=null;
+      document.getElementById('loginScreen').style.display='flex';
+      document.getElementById('mainApp').style.display='none';
+    }
+  });
+  document.getElementById('signInBtn').onclick=()=>FB.signInWithPopup(FB.auth,FB.provider).catch(e=>alert('Sign-in failed: '+e.message));
+});
+
+const dR=k=>FB.doc(FB.db,'users',U.uid,'days',k);
+const wR=()=>FB.doc(FB.db,'users',U.uid,'meta','weight');
+const wsR=()=>FB.doc(FB.db,'users',U.uid,'meta','wtS');
+const sfR=()=>FB.collection(FB.db,'sharedFoods');
+const rcR=()=>FB.collection(FB.db,'users',U.uid,'recipes');
+
+async function fsL(k){if(ch[k])return JSON.parse(JSON.stringify(ch[k]));try{const s=await FB.getDoc(dR(k));const d=s.exists()?s.data():{breakfast:[],lunch:[],dinner:[],snack:[]};ch[k]=d;return JSON.parse(JSON.stringify(d));}catch{return{breakfast:[],lunch:[],dinner:[],snack:[]};}}
+async function fsS(k,d){ch[k]=JSON.parse(JSON.stringify(d));try{await FB.setDoc(dR(k),d);}catch(e){console.error(e);}}
+async function fsR2(keys){await Promise.all(keys.filter(k=>!ch[k]).map(fsL));const o={};keys.forEach(k=>o[k]=ch[k]||{breakfast:[],lunch:[],dinner:[],snack:[]});return o;}
+
+async function ldCF(){try{const q=await FB.getDocs(FB.query(sfR(),FB.orderBy('name')));cFoods=q.docs.map(d=>({id:d.id,...d.data(),points:cP(d.data().cal,d.data().sat,d.data().sug,d.data().pro)}));}catch{cFoods=[];}}
+async function ldRecs(){try{const q=await FB.getDocs(FB.query(rcR(),FB.orderBy('name')));recs=q.docs.map(d=>({id:d.id,...d.data()}));}catch{recs=[];}renderRecs();}
+async function ldWD(){try{const s=await FB.getDoc(wR());wData=s.exists()?(s.data().entries||[]):[];wData.sort((a,b)=>a.date.localeCompare(b.date));}catch{wData=[];}}
+async function ldWS(){try{const s=await FB.getDoc(wsR());if(s.exists())wtS=s.data();}catch{}if(wtS.goal)document.getElementById('wGlIn').value=wtS.goal;if(wtS.height)document.getElementById('wHtIn').value=wtS.height;document.getElementById('wDate').value=tdK();}
+
+const aF=()=>[...BF,...cFoods];
+const aS=()=>[...aF(),...recs.map(r=>({...r,_r:true,points:Math.round(r.totalPts/r.servings)}))];
+
+function sv(v){
+  ['today','trends','weight','recipes','foods'].forEach((id,i)=>{document.getElementById('v'+id).classList.toggle('active',id===v);document.querySelectorAll('.tb')[i].classList.toggle('active',id===v);});
+  if(v==='trends')renderT();if(v==='weight')renderW();if(v==='recipes')renderRecs();if(v==='foods')rBrowse();
+}
+function navDay(d){const nd=aD(frK(cK),d);if(nd>new Date())return;cK=toK(nd);rdv();}
+function jumpToday(){cK=tdK();rdv();}
+
+async function rdv(){
+  const isT=cK===tdK(),isP=cK<tdK();const d=frK(cK);
+  document.getElementById('navDate').innerHTML=d.toLocaleDateString('en-CA',{weekday:'long',month:'long',day:'numeric'})+(isT?'<span class="tbadge">Today</span>':'');
+  document.getElementById('navSub').textContent=isT?'Current day':isP?'Past day':'';
+  document.getElementById('nxtBtn').disabled=isT;
+  document.getElementById('pastNote').style.display=isP?'block':'none';
+  document.getElementById('addSec').style.display=isP?'none':'block';
+  cM=await fsL(cK);['breakfast','lunch','dinner','snack'].forEach(rM);updS();
+}
+
+function updS(){
+  const tot={};let total=0;
+  ['breakfast','lunch','dinner','snack'].forEach(m=>{const t=(cM[m]||[]).reduce((s,i)=>s+i.pts,0);tot[m]=t;total+=t;});
+  document.getElementById('usedPts').textContent=total;
+  document.getElementById('remPts').textContent=BUDGET-total;
+  document.getElementById('bdgD').textContent=BUDGET;
+  const pct=Math.min((total/BUDGET)*100,100);
+  const bar=document.getElementById('pgBar');bar.style.width=pct+'%';bar.classList.toggle('over',total>BUDGET);
+  ['breakfast','lunch','dinner','snack'].forEach(m=>{document.getElementById('chip-'+m).textContent=tot[m];const b=document.getElementById('badge-'+m);b.textContent=tot[m]+' pts';b.classList.toggle('hf',tot[m]>0);});
+}
+
+function rM(meal){
+  const c=document.getElementById('items-'+meal),items=cM[meal]||[];
+  if(!items.length){c.innerHTML='<div class="mempty">No food added yet</div>';return;}
+  c.innerHTML=items.map(i=>`<div class="mi"><span class="min">${i.name}</span><span class="miq">${i.qty!==1?'x'+i.qty:''}</span><span class="mip ${i.pts===0?'z':''}">${i.pts} pts</span><button class="mid" data-m="${meal}" data-id="${i.id}">x</button></div>`).join('');
+  c.querySelectorAll('.mid').forEach(btn=>btn.addEventListener('click',async()=>{const id=parseFloat(btn.dataset.id),m=btn.dataset.m;cM[m]=cM[m].filter(i=>i.id!==id);rM(m);updS();await fsS(cK,cM);}));
+}
+
+const sEl=document.getElementById('foodSrch'),ddEl=document.getElementById('foodDD');
+function rDD(q){
+  q=q.toLowerCase().trim();const all=aS();
+  const f=q.length===0?all.slice(0,20):all.filter(x=>x.name.toLowerCase().includes(q)||(x.cat||'').toLowerCase().includes(q)).slice(0,30);
+  if(!f.length){ddEl.innerHTML='<div class="no-res">No foods found</div>';}
+  else{ddEl.innerHTML=f.map(x=>`<div class="di" data-i="${all.indexOf(x)}"><span class="fn">${x._r?'📖 ':''} ${x.name}</span><span class="fc">${x._r?'Recipe':x.cat}</span><span class="fp ${x.points===0?'fpz':'fpg'}">${x.points===0?'0 ★':x.points+' pts'}</span></div>`).join('');
+    ddEl.querySelectorAll('.di').forEach(el=>el.addEventListener('mousedown',e=>{e.preventDefault();sF=all[+el.dataset.i];sEl.value=sF.name;ddEl.classList.remove('open');updP();document.getElementById('addBtn').disabled=false;}));}
+  ddEl.classList.add('open');
+}
+sEl.addEventListener('input',()=>{sF=null;document.getElementById('addBtn').disabled=true;document.getElementById('ptsPrev').classList.remove('vis');rDD(sEl.value);});
+sEl.addEventListener('focus',()=>rDD(sEl.value));
+sEl.addEventListener('blur',()=>setTimeout(()=>ddEl.classList.remove('open'),150));
+
+const qEl=document.getElementById('qtyIn');
+document.getElementById('qm').onclick=()=>{const v=parseFloat(qEl.value);if(v>0.25){qEl.value=Math.max(0.25,v-0.25);updP();}};
+document.getElementById('qp').onclick=()=>{qEl.value=Math.min(20,parseFloat(qEl.value)+0.25);updP();};
+qEl.addEventListener('input',updP);
+function updP(){if(!sF)return;const qty=parseFloat(qEl.value)||1;const pts=sF._r?Math.round((sF.totalPts/sF.servings)*qty):Math.max(0,Math.round(sF.points*qty));document.getElementById('prevVal').textContent=pts;document.getElementById('ptsPrev').classList.add('vis');}
+
+document.getElementById('addBtn').addEventListener('click',async()=>{
+  if(!sF||sav)return;sav=true;const btn=document.getElementById('addBtn');btn.disabled=true;btn.textContent='Saving...';
+  const qty=parseFloat(qEl.value)||1;const pts=sF._r?Math.round((sF.totalPts/sF.servings)*qty):Math.max(0,Math.round(sF.points*qty));
+  const meal=document.getElementById('mealSel').value;if(!cM[meal])cM[meal]=[];
+  cM[meal].push({name:sF.name,qty,pts,id:Date.now()+Math.random()});
+  rM(meal);updS();await fsS(cK,cM);
+  sav=false;btn.textContent='+ Add to Meal';sEl.value='';sF=null;qEl.value=1;btn.disabled=true;document.getElementById('ptsPrev').classList.remove('vis');
+});
+
+async function clearDay(){if(!confirm('Clear all food entries for this day?'))return;cM={breakfast:[],lunch:[],dinner:[],snack:[]};await fsS(cK,cM);['breakfast','lunch','dinner','snack'].forEach(rM);updS();}
+
+function setPd(p,e){pd=p;pO=0;document.querySelectorAll('.pt').forEach(b=>b.classList.remove('active'));if(e&&e.target)e.target.classList.add('active');renderT();}
+function navP(d){pO=Math.min(0,pO+d);renderT();}
+
+function gPK(){
+  const t=new Date();
+  if(pd==='week'){const ws=soW(t);ws.setDate(ws.getDate()+pO*7);return Array.from({length:7},(_,i)=>toK(aD(ws,i)));}
+  if(pd==='month'){let y=t.getFullYear(),m=t.getMonth()+pO;while(m<0){m+=12;y--;}while(m>11){m-=12;y++;}return Array.from({length:dim(y,m)},(_,i)=>toK(new Date(y,m,i+1)));}
+  if(pd==='year'){const y=t.getFullYear()+pO;const k=[];for(let m=0;m<12;m++)for(let d=1;d<=dim(y,m);d++)k.push(toK(new Date(y,m,d)));return k;}
+  return[];
+}
+function gPL(){
+  const t=new Date();
+  if(pd==='week'){const ws=soW(t);ws.setDate(ws.getDate()+pO*7);return fS(ws)+' - '+fS(aD(ws,6))+(pO===0?' (This week)':'');}
+  if(pd==='month'){let y=t.getFullYear(),m=t.getMonth()+pO;while(m<0){m+=12;y--;}while(m>11){m-=12;y++;}return new Date(y,m,1).toLocaleDateString('en-CA',{month:'long',year:'numeric'});}
+  if(pd==='year')return String(t.getFullYear()+pO);
+}
+const gDT=d=>['breakfast','lunch','dinner','snack'].reduce((s,m)=>s+(d[m]||[]).reduce((a,i)=>a+i.pts,0),0);
+const gMT=d=>{const o={};['breakfast','lunch','dinner','snack'].forEach(m=>o[m]=(d[m]||[]).reduce((a,i)=>a+i.pts,0));return o;};
+const hE=d=>['breakfast','lunch','dinner','snack'].some(m=>(d[m]||[]).length>0);
+
+async function renderT(){
+  document.getElementById('tLoad').style.display='flex';document.getElementById('tCont').style.opacity='.4';
+  document.getElementById('pLbl').textContent=gPL();document.getElementById('nextPB').disabled=pO>=0;
+  const keys=gPK(),today=tdK();const dm=await fsR2(keys);
+  document.getElementById('tLoad').style.display='none';document.getElementById('tCont').style.opacity='1';
+  const mc={breakfast:'#f59e0b',lunch:'#10b981',dinner:'#6366f1',snack:'#f43f5e'};
+  const tots=keys.map(k=>gDT(dm[k]));const tK=keys.filter(k=>hE(dm[k])&&k<=today);const tT=tK.map(k=>gDT(dm[k]));
+  if(tT.length>0){
+    const avg=Math.round(tT.reduce((a,b)=>a+b,0)/tT.length),un=tT.filter(t=>t<=BUDGET).length,mn=Math.min(...tT),bk=tK[tT.indexOf(mn)];
+    document.getElementById('stAv').textContent=avg;document.getElementById('stUn').textContent=un;document.getElementById('stTr').textContent=tT.length;
+    document.getElementById('stBe').textContent=mn;document.getElementById('stBD').textContent=frK(bk).toLocaleDateString('en-CA',{weekday:'short',month:'short',day:'numeric'});
+    document.getElementById('stTo').textContent=tT.reduce((a,b)=>a+b,0);document.getElementById('stBu').textContent=BUDGET*keys.length+' budget';
+  } else {['stAv','stUn','stBe','stTo'].forEach(id=>document.getElementById(id).textContent='--');document.getElementById('stTr').textContent='0';document.getElementById('stBD').textContent='No data yet';document.getElementById('stBu').textContent=BUDGET*keys.length+' budget';}
+  if(pd==='year')rYC(keys,dm,tots,mc,today);else rBC(keys,dm,tots,mc,today);
+  document.getElementById('hmCard').style.display=pd==='month'?'block':'none';
+  if(pd==='month')rHM(keys,dm,today);
+  const hK=[...tK].reverse().slice(0,30);
+  if(!hK.length){document.getElementById('histList').innerHTML='<div class="no-data">No data for this period yet.</div>';return;}
+  document.getElementById('histList').innerHTML=hK.map(k=>{
+    const d=frK(k),pts=gDT(dm[k]),isT=k===today,ov=pts>BUDGET;const pct=Math.min((pts/BUDGET)*100,100);
+    return`<div class="hrow${isT?' tr':''}" onclick="jtd('${k}')"><div style="min-width:100px"><div class="hd">${d.toLocaleDateString('en-CA',{weekday:'long'})}${isT?' <span class="tbadge">Today</span>':''}</div><div class="hdt">${d.toLocaleDateString('en-CA',{month:'short',day:'numeric',year:'numeric'})}</div></div><div class="hbw"><div class="hbf" style="width:${pct}%;background:${ov?'var(--ac)':'var(--go)'}"></div></div><div class="hpts ${ov?'ov':'un'}">${pts}</div><div class="hst">${ov?'<span style="color:var(--ac)">+'+(pts-BUDGET)+' over</span>':'<span style="color:var(--gn)">'+(BUDGET-pts)+' left</span>'}</div></div>`;
+  }).join('');
+}
+
+function rBC(keys,dm,tots,mc,today){
+  const mp=Math.max(...tots,BUDGET,1);const aM=keys.map(k=>gMT(dm[k]));const ms=Math.max(...aM.map(m=>m.breakfast+m.lunch+m.dinner+m.snack),BUDGET,1);const isW=pd==='week';
+  document.getElementById('mChart').innerHTML=keys.map((k,i)=>{
+    const iF=k>today,isT=k===today,has=hE(dm[k])&&!iF;const pts=tots[i],pct=has?Math.min((pts/mp)*100,100):0;
+    const cls=!has?'emp':pts>BUDGET?'ovr':'und';const d=frK(k);const lbl=isW?d.toLocaleDateString('en-CA',{weekday:'short'}):d.getDate();const sl=isW||(d.getDate()%5===1||d.getDate()===1);
+    return`<div class="bc"><div class="bpts">${has?pts:''}</div><div class="bw"><div class="b ${cls}${isT?' td':''}" style="height:${pct}%" title="${has?pts+' pts':'No data'}"></div></div><div class="bl">${sl?lbl:''}</div></div>`;
+  }).join('');
+  document.getElementById('sChart').innerHTML=keys.map((k,i)=>{
+    const iF=k>today,isT=k===today,mt=aM[i],total=mt.breakfast+mt.lunch+mt.dinner+mt.snack;const has=hE(dm[k])&&!iF&&total>0;
+    const d=frK(k),lbl=isW?d.toLocaleDateString('en-CA',{weekday:'short'}):d.getDate(),sl=isW||(d.getDate()%5===1||d.getDate()===1);
+    if(!has)return`<div class="bc"><div class="bpts"></div><div class="bw"><div class="b emp" style="height:3px"></div></div><div class="bl">${sl?lbl:''}</div></div>`;
+    const tp=Math.min((total/ms)*100,100);const segs=['breakfast','lunch','dinner','snack'].map(m=>`<div style="height:${(mt[m]/ms)*100}%;background:${mc[m]};flex-shrink:0"></div>`).join('');
+    return`<div class="bc"><div class="bpts">${total}</div><div class="bw"><div${isT?' class="td"':''} style="height:${tp}%;width:100%;display:flex;flex-direction:column-reverse;border-radius:4px 4px 0 0;overflow:hidden">${segs}</div></div><div class="bl">${sl?lbl:''}</div></div>`;
+  }).join('');
+}
+
+function rYC(keys,dm,tots,mc,today){
+  const y=frK(keys[0]).getFullYear();const months=Array.from({length:12},(_,m)=>({label:new Date(y,m,1).toLocaleDateString('en-CA',{month:'short'}),total:0,mt:{breakfast:0,lunch:0,dinner:0,snack:0},has:false}));
+  keys.forEach((k,i)=>{const m=frK(k).getMonth();if(hE(dm[k])&&k<=today){months[m].total+=tots[i];months[m].has=true;const mt=gMT(dm[k]);['breakfast','lunch','dinner','snack'].forEach(meal=>months[m].mt[meal]+=mt[meal]);}});
+  const bpm=BUDGET*30,mp=Math.max(...months.map(m=>m.total),bpm,1),ms=Math.max(...months.map(m=>m.mt.breakfast+m.mt.lunch+m.mt.dinner+m.mt.snack),bpm,1);
+  document.getElementById('mChart').innerHTML=months.map(m=>{const pct=m.has?Math.min((m.total/mp)*100,100):0;const cls=!m.has?'emp':m.total>bpm?'ovr':'und';return`<div class="bc"><div class="bpts">${m.has?m.total:''}</div><div class="bw"><div class="b ${cls}" style="height:${pct}%"></div></div><div class="bl">${m.label}</div></div>`;}).join('');
+  document.getElementById('sChart').innerHTML=months.map(m=>{if(!m.has)return`<div class="bc"><div class="bpts"></div><div class="bw"><div class="b emp" style="height:3px"></div></div><div class="bl">${m.label}</div></div>`;const total=m.mt.breakfast+m.mt.lunch+m.mt.dinner+m.mt.snack;const tp=Math.min((total/ms)*100,100);const segs=['breakfast','lunch','dinner','snack'].map(meal=>`<div style="height:${(m.mt[meal]/ms)*100}%;background:${mc[meal]};flex-shrink:0"></div>`).join('');return`<div class="bc"><div class="bpts">${total}</div><div class="bw"><div style="height:${tp}%;width:100%;display:flex;flex-direction:column-reverse;border-radius:4px 4px 0 0;overflow:hidden">${segs}</div></div><div class="bl">${m.label}</div></div>`;}).join('');
+}
+
+function rHM(keys,dm,today){
+  const d0=frK(keys[0]),dow=d0.getDay();let h='<div class="hmap">';
+  ['Su','Mo','Tu','We','Th','Fr','Sa'].forEach(d=>h+=`<div class="hmdl">${d}</div>`);
+  for(let i=0;i<dow;i++)h+=`<div></div>`;
+  keys.forEach(k=>{const d=frK(k),pts=gDT(dm[k]),has=hE(dm[k])&&k<=today,isT=k===today;const r=pts/BUDGET;let bg='#e2ddd5';if(has){bg=pts===0?'#10b981':r<=0.7?'#34d399':r<=1?'#f59e0b':'#ef4444';}h+=`<div class="hmc" style="background:${bg};opacity:${has?1:.22}${isT?';outline:2px solid #1a1714;outline-offset:1px':''}" onclick="jtd('${k}')"><span class="hmtp">${fS(d)}: ${has?pts+' pts':'no data'}</span></div>`;});
+  h+='</div><div style="display:flex;gap:10px;margin-top:9px;font-size:11px;color:var(--mu);flex-wrap:wrap">';
+  [['#34d399','Under'],['#f59e0b','Near budget'],['#ef4444','Over'],['#e2ddd5','No data']].forEach(([c,l])=>h+=`<div style="display:flex;align-items:center;gap:3px"><div style="width:9px;height:9px;border-radius:2px;background:${c}"></div>${l}</div>`);
+  h+='</div>';document.getElementById('hmWrap').innerHTML=h;
+}
+function jtd(k){cK=k;sv('today');rdv();}
+
+async function logWt(){
+  const d=document.getElementById('wDate').value,v=parseFloat(document.getElementById('wVal').value);
+  if(!d||!v||v<50||v>600){alert('Please enter a valid date and weight.');return;}
+  wData=wData.filter(e=>e.date!==d);wData.push({date:d,weight:v});wData.sort((a,b)=>a.date.localeCompare(b.date));
+  try{await FB.setDoc(wR(),{entries:wData});}catch(e){console.error(e);}
+  document.getElementById('wVal').value='';renderW();
+}
+
+async function saveWS(){
+  wtS.goal=parseFloat(document.getElementById('wGlIn').value)||null;wtS.height=parseFloat(document.getElementById('wHtIn').value)||null;
+  try{await FB.setDoc(wsR(),wtS);}catch{}renderW();alert('Settings saved!');
+}
+
+async function delWt(date){wData=wData.filter(e=>e.date!==date);try{await FB.setDoc(wR(),{entries:wData});}catch{}renderW();}
+
+function renderW(){
+  if(!wData.length){document.getElementById('wCur').textContent='--';document.getElementById('wGl').textContent=wtS.goal||'--';document.getElementById('wBM').textContent='--';document.getElementById('wDf').textContent='Log your first weight';document.getElementById('wTg').textContent='--';document.getElementById('gbWrap').style.display='none';document.getElementById('bmiPl').style.display='none';document.getElementById('wLog').innerHTML='<div class="no-data">No entries yet</div>';document.getElementById('wChart').innerHTML='<div class="no-data">Log some weights to see your chart!</div>';return;}
+  const last=wData[wData.length-1],prev=wData.length>1?wData[wData.length-2]:null;const diff=prev?(last.weight-prev.weight).toFixed(1):null;
+  document.getElementById('wCur').textContent=last.weight;document.getElementById('wGl').textContent=wtS.goal||'--';document.getElementById('wDf').textContent=diff?(diff>0?'+':'')+diff+' lbs from last':'First entry';
+  if(wtS.goal&&wData.length){const s=wData[0].weight,g=wtS.goal,tot=Math.abs(s-g),done=Math.abs(last.weight-s),pct=tot>0?Math.min((done/tot)*100,100):100;document.getElementById('gbWrap').style.display='block';document.getElementById('gbSt').textContent=s+' lbs';document.getElementById('gbGo').textContent='Goal: '+g+' lbs';document.getElementById('gbFl').style.width=pct+'%';document.getElementById('wTg').textContent=Math.abs(last.weight-g).toFixed(1)+' lbs to go';}
+  else{document.getElementById('gbWrap').style.display='none';document.getElementById('wTg').textContent='Set a goal in settings';}
+  if(wtS.height&&last.weight){const h=wtS.height,bmi=((last.weight*703)/(h*h)).toFixed(1);const cat=bmi<18.5?'Underweight':bmi<25?'Normal weight':bmi<30?'Overweight':'Obese';const col=bmi<18.5?'#60a5fa':bmi<25?'#34d399':bmi<30?'#f59e0b':'#f87171';document.getElementById('wBM').textContent=bmi;document.getElementById('wBC').textContent=cat;document.getElementById('bmiPl').style.display='inline-flex';document.getElementById('bmiLb').textContent='BMI '+bmi+' — '+cat;document.getElementById('bmiDt').style.background=col;}
+  else{document.getElementById('wBM').textContent='--';document.getElementById('wBC').textContent='Enter height for BMI';document.getElementById('bmiPl').style.display='none';}
+  if(wData.length>1){
+    const W=560,H=160,P=36;const vals=wData.map(e=>e.weight);const mn=Math.min(...vals)-2,mx=Math.max(...vals)+2;const xS=(W-P*2)/(wData.length-1),yS=(H-P*2)/(mx-mn);
+    const pts=wData.map((e,i)=>`${P+i*xS},${H-P-(e.weight-mn)*yS}`).join(' ');const area=`${P},${H-P} `+wData.map((e,i)=>`${P+i*xS},${H-P-(e.weight-mn)*yS}`).join(' ')+` ${P+(wData.length-1)*xS},${H-P}`;
+    let svg=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="overflow:visible"><defs><linearGradient id="wg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#E9A923" stop-opacity=".3"/><stop offset="100%" stop-color="#E9A923" stop-opacity="0"/></linearGradient></defs><polygon points="${area}" fill="url(#wg)"/><polyline points="${pts}" fill="none" stroke="#E9A923" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    wData.forEach((e,i)=>{const x=P+i*xS,y=H-P-(e.weight-mn)*yS;svg+=`<circle cx="${x}" cy="${y}" r="4" fill="#E9A923" stroke="#fff" stroke-width="2"/>`;if(i===0||i===wData.length-1||wData.length<15)svg+=`<text x="${x}" y="${y-10}" text-anchor="middle" font-size="10" fill="#7A746B" font-family="DM Sans">${e.weight}</text>`;});
+    if(wtS.goal){const gy=H-P-(wtS.goal-mn)*yS;if(gy>0&&gy<H)svg+=`<line x1="${P}" y1="${gy}" x2="${W-P}" y2="${gy}" stroke="#2D6A4F" stroke-width="1.5" stroke-dasharray="5,4"/><text x="${W-P+4}" y="${gy+4}" font-size="10" fill="#2D6A4F" font-family="DM Sans">Goal</text>`;}
+    svg+='</svg>';document.getElementById('wChart').innerHTML=svg;
+  }
+  document.getElementById('wLog').innerHTML=[...wData].reverse().slice(0,20).map((e,i,arr)=>{const p2=arr[i+1];const df=p2?(e.weight-p2.weight).toFixed(1):null;return`<div class="wlr"><div class="wld">${frK(e.date).toLocaleDateString('en-CA',{weekday:'short',month:'short',day:'numeric'})}</div><div class="wlv">${e.weight} lbs</div><div class="wldf ${df?df>0?'up':'dn':''}">${df?(df>0?'+':'')+df:'--'}</div><button class="wldl" onclick="delWt('${e.date}')">x</button></div>`;}).join('');
+}
+
+function openRM(id){
+  eRec=id?recs.find(r=>r.id===id):null;rIng=eRec?[...eRec.ingredients]:[];
+  document.getElementById('rmTitle').textContent=eRec?'Edit Recipe':'New Recipe';
+  document.getElementById('rName').value=eRec?.name||'';document.getElementById('rSrv').value=eRec?.servings||1;document.getElementById('rNts').value=eRec?.notes||'';
+  document.getElementById('ingS').value='';document.getElementById('rModal').classList.add('open');
+  renderIngList();setupIngS();
+}
+function closeRM(){document.getElementById('rModal').classList.remove('open');eRec=null;rIng=[];}
+document.getElementById('rModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeRM();});
+
+function renderIngList(){
+  const total=rIng.reduce((s,i)=>s+i.pts,0);const pps=Math.round(total/(parseFloat(document.getElementById('rSrv').value)||1));
+  document.getElementById('ingList').innerHTML=rIng.map((ing,i)=>`<div class="ir"><span class="irn">${ing.name}</span><span class="irq">x${ing.qty}</span><span class="irp">${ing.pts} pts</span><button class="ird" onclick="rmIng(${i})">x</button></div>`).join('');
+  if(total>0){document.getElementById('ingTot').style.display='block';document.getElementById('ingTot').textContent=`Total: ${total} pts (${pps} pts per serving)`;}
+  else document.getElementById('ingTot').style.display='none';
+}
+function rmIng(i){rIng.splice(i,1);renderIngList();}
+
+function setupIngS(){
+  const idd=document.getElementById('ingDD'),is=document.getElementById('ingS');
+  is.oninput=()=>{
+    const q=is.value.toLowerCase();const f=q.length===0?aF().slice(0,20):aF().filter(x=>x.name.toLowerCase().includes(q)||x.cat.toLowerCase().includes(q)).slice(0,30);
+    if(!f.length){idd.innerHTML='<div class="no-res">No foods found</div>';}
+    else{idd.innerHTML=f.map(x=>`<div class="di" data-i="${aF().indexOf(x)}"><span class="fn">${x.name}</span><span class="fc">${x.cat}</span><span class="fp ${x.points===0?'fpz':'fpg'}">${x.points===0?'0 ★':x.points+' pts'}</span></div>`).join('');
+      idd.querySelectorAll('.di').forEach(el=>el.addEventListener('mousedown',e=>{e.preventDefault();const food=aF()[+el.dataset.i];rIng.push({name:food.name,qty:1,pts:food.points});is.value='';idd.classList.remove('open');renderIngList();}));}
+    idd.classList.add('open');
+  };
+  is.onfocus=()=>{if(!is.value.length)is.oninput();};
+  is.onblur=()=>setTimeout(()=>idd.classList.remove('open'),150);
+}
+
+async function saveRec(){
+  const name=document.getElementById('rName').value.trim();const servings=parseFloat(document.getElementById('rSrv').value)||1;const notes=document.getElementById('rNts').value.trim();
+  if(!name){alert('Please enter a recipe name.');return;}if(!rIng.length){alert('Please add at least one ingredient.');return;}
+  const totalPts=rIng.reduce((s,i)=>s+i.pts,0);const rec={name,servings,notes,ingredients:rIng,totalPts,createdBy:U.displayName||U.email,updatedAt:new Date().toISOString()};
+  try{
+    if(eRec){rec.id=eRec.id;await FB.setDoc(FB.doc(FB.db,'users',U.uid,'recipes',eRec.id),rec);const idx=recs.findIndex(r=>r.id===eRec.id);if(idx>=0)recs[idx]=rec;}
+    else{const r=await FB.addDoc(rcR(),rec);rec.id=r.id;recs.push(rec);}
+  }catch(e){alert('Error saving recipe: '+e.message);}
+  closeRM();renderRecs();
+}
+
+function renderRecs(){
+  const grid=document.getElementById('rGrid');
+  if(!recs.length){grid.innerHTML='<div class="no-data" style="grid-column:1/-1">No recipes yet. Create your first one!</div>';return;}
+  grid.innerHTML=recs.map(r=>{const pps=Math.round(r.totalPts/r.servings);return`<div class="rcard"><div class="rchdr"><div><div class="rcn">${r.name}</div><div class="rcs">${r.servings} serving${r.servings!==1?'s':''} • ${pps} pts/serving</div></div><div class="rcp">${r.totalPts} pts</div></div>${r.notes?`<div class="rcno">${r.notes}</div>`:''}<div class="rcis">${(r.ingredients||[]).map(i=>`<div class="rci"><span>${i.name}</span><span>${i.pts} pts</span></div>`).join('')}</div><div class="rcac"><button class="btn bp bsm" style="flex:1" onclick="addRecMeal('${r.id}')">+ Add to Meal</button><button class="btn bo bsm" onclick="openRM('${r.id}')">Edit</button><button class="bdng bsm" onclick="delRec('${r.id}')">Delete</button></div><div class="rcby">by ${r.createdBy||'you'}</div></div>`;}).join('');
+}
+
+function addRecMeal(id){const r=recs.find(x=>x.id===id);if(!r)return;sv('today');sF={...r,_r:true,points:Math.round(r.totalPts/r.servings)};document.getElementById('foodSrch').value=r.name;qEl.value=1;document.getElementById('addBtn').disabled=false;updP();}
+
+async function delRec(id){if(!confirm('Delete this recipe?'))return;try{await FB.deleteDoc(FB.doc(FB.db,'users',U.uid,'recipes',id));}catch(e){alert('Error deleting');}recs=recs.filter(r=>r.id!==id);renderRecs();}
+
+function setFT(t,e){
+  document.querySelectorAll('.ftb').forEach(b=>b.classList.remove('active'));if(e&&e.target)e.target.classList.add('active');
+  document.getElementById('ftBrowse').style.display=t==='browse'?'block':'none';document.getElementById('ftCalc').style.display=t==='calc'?'block':'none';document.getElementById('ftCustom').style.display=t==='custom'?'block':'none';
+  if(t==='custom')renderCFL();
+}
+
+function rBrowse(){
+  const q=(document.getElementById('bSrch')?.value||'').toLowerCase();const all=aF();const f=q?all.filter(x=>x.name.toLowerCase().includes(q)||x.cat.toLowerCase().includes(q)):all;
+  document.getElementById('browseList').innerHTML=f.length?f.map(x=>`<div class="fli"><div><div class="flin">${x.name}</div><div class="flicat">${x.cat}${x.srv?' • '+x.srv:''}</div></div><div><div class="flip">${x.points}</div><div class="flim">Cal ${x.cal} • P ${x.pro}g</div></div></div>`).join(''):'<div class="no-data">No foods found</div>';
+}
+
+function runCalc(){
+  const c=parseFloat(document.getElementById('cC').value)||0,s=parseFloat(document.getElementById('sFC').value)||0,su=parseFloat(document.getElementById('suC').value)||0,p=parseFloat(document.getElementById('prC').value)||0;
+  document.getElementById('crP').textContent=cP(c,s,su,p);document.getElementById('cRes').classList.add('vis');
+}
+
+function calcToCustom(){
+  setFT('custom',null);document.querySelectorAll('.ftb').forEach((b,i)=>b.classList.toggle('active',i===2));
+  document.getElementById('cfCal').value=document.getElementById('cC').value;document.getElementById('cfSat').value=document.getElementById('sFC').value;document.getElementById('cfSug').value=document.getElementById('suC').value;document.getElementById('cfPro').value=document.getElementById('prC').value;document.getElementById('cfN').focus();
+}
+
+async function saveCF(){
+  const name=document.getElementById('cfN').value.trim(),cat=document.getElementById('cfC').value;const cal=parseFloat(document.getElementById('cfCal').value)||0,sat=parseFloat(document.getElementById('cfSat').value)||0,sug=parseFloat(document.getElementById('cfSug').value)||0,pro=parseFloat(document.getElementById('cfPro').value)||0,srv=document.getElementById('cfSrv').value.trim();
+  if(!name||!cal){alert('Please enter a name and calories at minimum.');return;}
+  const food={name,cat,cal,sat,sug,pro,srv,addedBy:U.displayName||U.email,addedAt:new Date().toISOString()};
+  try{const ref=await FB.addDoc(sfR(),food);cFoods.push({id:ref.id,...food,points:cP(cal,sat,sug,pro)});}catch(e){alert('Error: '+e.message);return;}
+  ['cfN','cfCal','cfSat','cfSug','cfPro','cfSrv'].forEach(id=>document.getElementById(id).value='');
+  renderCFL();rBrowse();alert('Custom food saved and shared with all users!');
+}
+
+function renderCFL(){
+  const list=document.getElementById('cfList');
+  if(!cFoods.length){list.innerHTML='<div class="no-data">No custom foods yet</div>';return;}
+  list.innerHTML=cFoods.map(f=>`<div class="fli"><div><div class="flin">${f.name}</div><div class="flicat">${f.cat}${f.srv?' • '+f.srv:''} • by ${f.addedBy||'unknown'}</div></div><div style="display:flex;align-items:center;gap:8px"><div><div class="flip">${f.points}</div><div class="flim">Cal ${f.cal}</div></div><button class="bdng bsm" onclick="delCF('${f.id}')">x</button></div></div>`).join('');
+}
+
+async function delCF(id){if(!confirm('Delete this custom food?'))return;try{await FB.deleteDoc(FB.doc(FB.db,'sharedFoods',id));}catch(e){alert('Error deleting');}cFoods=cFoods.filter(f=>f.id!==id);renderCFL();rBrowse();}
+</script>
+</body>
+</html>
