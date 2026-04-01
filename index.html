@@ -11,12 +11,13 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChang
 import { getFirestore, doc, setDoc, getDoc, getDocs, deleteDoc, collection, query, orderBy, addDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 // PASTE YOUR FIREBASE CONFIG HERE
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.firebasestorage.app",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyAEQwUS-rq1NwL36TUBrEzZQJPRwQoURpM",
+  authDomain: "pointstrack-773da.firebaseapp.com",
+  projectId: "pointstrack-773da",
+  storageBucket: "pointstrack-773da.firebasestorage.app",
+  messagingSenderId: "476361558281",
+  appId: "1:476361558281:web:782a06fadca00b7d06abd8",
+  measurementId: "G-YZ96W10YF3"
 };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
